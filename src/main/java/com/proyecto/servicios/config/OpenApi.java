@@ -7,9 +7,9 @@ import io.swagger.v3.oas.models.info.Info;
 import io.swagger.v3.oas.models.security.SecurityRequirement;
 import io.swagger.v3.oas.models.security.SecurityScheme;
 import io.swagger.v3.oas.models.servers.Server;
-import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
+import org.springframework.web.servlet.config.annotation.CorsRegistry;
 import org.springframework.web.servlet.config.annotation.ViewControllerRegistry;
 import org.springframework.web.servlet.config.annotation.WebMvcConfigurer;
 
@@ -18,16 +18,13 @@ import java.util.List;
 @Configuration
 public class OpenApi implements WebMvcConfigurer {
 
-    @Value("${server.port:8080}")
-    private String serverPort;
-
     @Override
     public void addViewControllers(ViewControllerRegistry registry) {
         registry.addRedirectViewController("/", "/swagger-ui/index.html");
     }
 
     @Override
-    public void addCorsMappings(org.springframework.web.servlet.config.annotation.CorsRegistry registry) {
+    public void addCorsMappings(CorsRegistry registry) {
         registry.addMapping("/**")
                 .allowedOriginPatterns("*")
                 .allowedMethods("GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS")
@@ -45,7 +42,9 @@ public class OpenApi implements WebMvcConfigurer {
                         .version("1.0.0")
                         .contact(new Contact().name("Institución Financiera / Onboarding")))
                 .servers(List.of(
-                        new Server().url("http://localhost:" + serverPort).description("Servidor Local")
+                        new Server().url("/").description("Servidor Actual (Automático)"),
+                        new Server().url("https://onboarding-clientes-api.onrender.com").description("Servidor en la Nube (Render)"),
+                        new Server().url("http://localhost:8080").description("Servidor Local (Desarrollo)")
                 ))
                 .addSecurityItem(new SecurityRequirement().addList(securitySchemeName))
                 .components(new Components()
