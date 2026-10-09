@@ -36,27 +36,27 @@ public class ClienteController {
     }
 
     @GetMapping
-    @Operation(summary = "Consultar clientes con filtros dinámicos", description = "Permite obtener todos los clientes o filtrar por nombre, apellido paterno, apellido materno, CURP, RFC, correo o estatus activo")
+    @Operation(summary = "Consultar todos los clientes (o filtrar)", description = "Devuelve la lista completa de todos los clientes registrados. Si se desea filtrar, se puede enviar opcionalmente nombre, apellido paterno, apellido materno, CURP, RFC, correo o activo.")
     public ResponseEntity<List<ClienteResponse>> consultarClientes(
-            @Parameter(description = "Buscar clientes por nombre")
+            @Parameter(description = "Buscar clientes por nombre (opcional)")
             @RequestParam(required = false) String nombre,
 
-            @Parameter(description = "Buscar clientes por apellido paterno")
+            @Parameter(description = "Buscar clientes por apellido paterno (opcional)")
             @RequestParam(required = false) String apellidoPaterno,
 
-            @Parameter(description = "Buscar clientes por apellido materno")
+            @Parameter(description = "Buscar clientes por apellido materno (opcional)")
             @RequestParam(required = false) String apellidoMaterno,
 
-            @Parameter(description = "Buscar un cliente por CURP")
+            @Parameter(description = "Buscar un cliente por CURP (opcional)")
             @RequestParam(required = false) String curp,
 
-            @Parameter(description = "Buscar un cliente por RFC")
+            @Parameter(description = "Buscar un cliente por RFC (opcional)")
             @RequestParam(required = false) String rfc,
 
-            @Parameter(description = "Buscar cliente por correo electrónico")
+            @Parameter(description = "Buscar cliente por correo electrónico (opcional)")
             @RequestParam(required = false) String correo,
 
-            @Parameter(description = "Filtrar por estatus activo (true/false)")
+            @Parameter(description = "Filtrar por estatus activo (true/false) (opcional)")
             @RequestParam(required = false) Boolean activo
     ) {
         if (curp != null && !curp.trim().isEmpty()) {

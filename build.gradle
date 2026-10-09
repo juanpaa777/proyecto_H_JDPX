@@ -1,7 +1,7 @@
 plugins {
     id 'jacoco'
     id 'io.spring.dependency-management' version '1.1.0'
-    id 'org.springframework.boot' version '3.3.6'//Versión de componentes de spring boot
+    id 'org.springframework.boot' version '3.3.6'//VersiÃ³n de componentes de spring boot
     id 'org.sonarqube' version '4.0.0.2929'
     id "org.owasp.dependencycheck" version "8.1.2"
     id 'com.github.ben-manes.versions' version '0.46.0'
@@ -37,6 +37,11 @@ repositories {
     mavenCentral()
 }
 
+
+
+configurations.all {
+    exclude group: 'commons-logging', module: 'commons-logging'
+}
 
 dependencies {
     //Spring Framework
@@ -75,7 +80,7 @@ dependencies {
     //implementation 'org.apache.httpcomponents:httpclient:4.5.14'
     implementation 'org.apache.httpcomponents.client5:httpclient5:5.4.1'
     implementation 'org.mapstruct:mapstruct:1.6.3'
-    //Serialización
+    //SerializaciÃ³n
     implementation 'com.google.code.gson:gson:2.10.1'
     implementation 'org.json:json:20231013'
     //Utilerias Google
@@ -134,7 +139,7 @@ jacocoTestReport {
     }
 }
 
-//ejecutar applicación dentro de contenedor
+//ejecutar applicaciÃ³n dentro de contenedor
 //sh gradlew clean build dockerImage dockerUp
 /**
  * Genera imagen

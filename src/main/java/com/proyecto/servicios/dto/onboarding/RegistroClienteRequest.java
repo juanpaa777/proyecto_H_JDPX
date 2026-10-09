@@ -18,18 +18,18 @@ public class RegistroClienteRequest {
 
     // --- Datos Personales ---
     @NotBlank(message = "El nombre es obligatorio")
-    @Pattern(regexp = "^[a-zA-ZáéíóúÁÉÍÓÚñÑüÜ\\s]{2,50}$", message = "El nombre debe contener solo letras y espacios, entre 2 y 50 caracteres")
+    @Pattern(regexp = "^[\\p{L}\\s]{2,50}$", message = "El nombre debe contener solo letras y espacios, entre 2 y 50 caracteres")
     private String nombre;
 
-    @Pattern(regexp = "^$|^[a-zA-ZáéíóúÁÉÍÓÚñÑüÜ\\s]{2,50}$", message = "El segundo nombre debe contener solo letras y espacios, entre 2 y 50 caracteres")
+    @Pattern(regexp = "^$|^[\\p{L}\\s]{2,50}$", message = "El segundo nombre debe contener solo letras y espacios, entre 2 y 50 caracteres")
     private String segundoNombre;
 
     @NotBlank(message = "El apellido paterno es obligatorio")
-    @Pattern(regexp = "^[a-zA-ZáéíóúÁÉÍÓÚñÑüÜ\\s]{2,50}$", message = "El apellido paterno debe contener solo letras y espacios, entre 2 y 50 caracteres")
+    @Pattern(regexp = "^[\\p{L}\\s]{2,50}$", message = "El apellido paterno debe contener solo letras y espacios, entre 2 y 50 caracteres")
     private String apellidoPaterno;
 
     @NotBlank(message = "El apellido materno es obligatorio")
-    @Pattern(regexp = "^[a-zA-ZáéíóúÁÉÍÓÚñÑüÜ\\s]{2,50}$", message = "El apellido materno debe contener solo letras y espacios, entre 2 y 50 caracteres")
+    @Pattern(regexp = "^[\\p{L}\\s]{2,50}$", message = "El apellido materno debe contener solo letras y espacios, entre 2 y 50 caracteres")
     private String apellidoMaterno;
 
     @NotNull(message = "La fecha de nacimiento es obligatoria")
@@ -37,11 +37,11 @@ public class RegistroClienteRequest {
     private LocalDate fechaNacimiento;
 
     @NotBlank(message = "La CURP es obligatoria")
-    @Pattern(regexp = "^[A-Z]{4}[0-9]{6}[HM][A-Z]{5}[0-9A-Z][0-9]$", message = "La CURP debe tener un formato oficial válido de 18 caracteres")
+    @Pattern(regexp = "^[A-Za-z]{4}[0-9]{6}[HhMm][A-Za-z]{5}[0-9A-Za-z][0-9]$", message = "La CURP debe tener un formato oficial válido de 18 caracteres")
     private String curp;
 
     @NotBlank(message = "El RFC es obligatorio")
-    @Pattern(regexp = "^[A-ZÑ&]{3,4}[0-9]{6}[A-Z0-9]{3}$", message = "El RFC debe tener un formato oficial válido de 12 o 13 caracteres")
+    @Pattern(regexp = "^[A-Za-zÑñ&]{3,4}[0-9]{6}[A-Za-z0-9]{3}$", message = "El RFC debe tener un formato oficial válido de 12 o 13 caracteres")
     private String rfc;
 
     @NotBlank(message = "El sexo es obligatorio")

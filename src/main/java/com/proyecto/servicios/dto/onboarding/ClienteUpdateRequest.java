@@ -18,16 +18,16 @@ import java.time.LocalDate;
 public class ClienteUpdateRequest {
 
     // Datos Personales
-    @Pattern(regexp = "^$|^[a-zA-ZáéíóúÁÉÍÓÚñÑüÜ\\s]{2,50}$", message = "El nombre debe contener solo letras y espacios, entre 2 y 50 caracteres")
+    @Pattern(regexp = "^$|^[\\p{L}\\s]{2,50}$", message = "El nombre debe contener solo letras y espacios, entre 2 y 50 caracteres")
     private String nombre;
 
-    @Pattern(regexp = "^$|^[a-zA-ZáéíóúÁÉÍÓÚñÑüÜ\\s]{2,50}$", message = "El segundo nombre debe contener solo letras y espacios, entre 2 y 50 caracteres")
+    @Pattern(regexp = "^$|^[\\p{L}\\s]{2,50}$", message = "El segundo nombre debe contener solo letras y espacios, entre 2 y 50 caracteres")
     private String segundoNombre;
 
-    @Pattern(regexp = "^$|^[a-zA-ZáéíóúÁÉÍÓÚñÑüÜ\\s]{2,50}$", message = "El apellido paterno debe contener solo letras y espacios, entre 2 y 50 caracteres")
+    @Pattern(regexp = "^$|^[\\p{L}\\s]{2,50}$", message = "El apellido paterno debe contener solo letras y espacios, entre 2 y 50 caracteres")
     private String apellidoPaterno;
 
-    @Pattern(regexp = "^$|^[a-zA-ZáéíóúÁÉÍÓÚñÑüÜ\\s]{2,50}$", message = "El apellido materno debe contener solo letras y espacios, entre 2 y 50 caracteres")
+    @Pattern(regexp = "^$|^[\\p{L}\\s]{2,50}$", message = "El apellido materno debe contener solo letras y espacios, entre 2 y 50 caracteres")
     private String apellidoMaterno;
 
     @MayorDeEdad
