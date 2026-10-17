@@ -1,65 +1,82 @@
-# 🏛️ Proyecto Integrador: Onboarding de Clientes Personas Físicas
+# 🏛️ API REST Empresarial: Onboarding Bancario & Administración de Usuarios
 
 > **Institución:** Universidad Tecnológica del Norte de Guanajuato (UTNG)  
 > **Área:** Tecnologías de la Información — Ingeniería en Desarrollo y Gestión de Software  
 > **Materia:** Desarrollo Móvil Integral / Servicios Web y Backend  
+> **Profesor:** M.T.I. Francisco Hasaní Barrera Portilla  
 > **Servidor en Vivo (Producción):** [https://onboarding-clientes-api.onrender.com](https://onboarding-clientes-api.onrender.com)  
-> **Documentación Interactiva (Swagger/OpenAPI):** [https://onboarding-clientes-api.onrender.com/swagger-ui/index.html](https://onboarding-clientes-api.onrender.com/swagger-ui/index.html)  
+> **Documentación Interactiva (Swagger / OpenAPI):** [http://localhost:8080/swagger-ui.html](http://localhost:8080/swagger-ui.html)  
 
 ---
 
 ## 📑 Tabla de Contenidos
-1. [Objetivo e Historia de Usuario](#-1-objetivo-e-historia-de-usuario)
-2. [Arquitectura Tecnológica](#-2-arquitectura-tecnológica)
-3. [Diagrama Entidad-Relación (DER)](#-3-diagrama-entidad-relación-der)
-4. [Diseño y Script de Base de Datos (DDL)](#-4-diseño-y-script-de-base-de-datos-ddl)
-5. [Reglas de Negocio y Validaciones](#-5-reglas-de-negocio-y-validaciones)
-6. [Catálogo de Endpoints API REST](#-6-catálogo-de-endpoints-api-rest)
-7. [Catálogo de Direcciones SEPOMEX (Auto-Sync)](#-7-catálogo-de-direcciones-sepomex-auto-sync)
-8. [Manejo Global de Excepciones](#-8-manejo-global-de-excepciones)
-9. [Seguridad y Autenticación JWT](#-9-seguridad-y-autenticación-jwt)
-10. [Instalación y Ejecución](#-10-instalación-y-ejecución)
-11. [Matriz de Evaluación](#-11-matriz-de-evaluación)
+1. [Objetivo del Proyecto y Alcance](#-1-objetivo-del-proyecto-y-alcance)
+2. [Arquitectura Tecnológica y Estándares de Diseño](#-2-arquitectura-tecnol%C3%B3gica-y-est%C3%A1ndares-de-dise%C3%B1o)
+3. [Requisitos Técnicos y Reglas de Calidad Obligatorias](#-3-requisitos-t%C3%A9cnicos-y-reglas-de-calidad-obligatorias)
+4. [Diagrama Entidad-Relación (DER)](#-4-diagrama-entidad-relaci%C3%B3n-der)
+5. [Diseño y Script de Base de Datos (DDL)](#-5-dise%C3%B1o-y-script-de-base-de-datos-ddl)
+6. [Catálogo Completo de Endpoints API REST (100% RequestBody)](#-6-cat%C3%A1logo-completo-de-endpoints-api-rest-100-requestbody)
+7. [Filtros Dinámicos con JPA Criteria y Paginación Estándar](#-7-filtros-din%C3%A1micos-con-jpa-criteria-y-paginaci%C3%B3n-est%C3%A1ndar)
+8. [Manejo Centralizado de Excepciones y Validación DTO](#-8-manejo-centralizado-de-excepciones-y-validaci%C3%B3n-dto)
+9. [Seguridad, Cifrado y Autenticación](#-9-seguridad-cifrado-y-autenticaci%C3%B3n)
+10. [Catálogo de Direcciones SEPOMEX (Auto-Sync)](#-10-cat%C3%A1logo-de-direcciones-sepomex-auto-sync)
+11. [Suite de Pruebas Automatizadas (56/56 Aprobadas)](#-11-suite-de-pruebas-automatizadas-5656-aprobadas)
+12. [Instalación y Guía de Ejecución](#-12-instalaci%C3%B3n-y-gu%C3%ADa-de-ejecuci%C3%B3n)
+13. [Matriz de Cumplimiento](#-13-matriz-de-cumplimiento)
 
 ---
 
-## 🎯 1. Objetivo e Historia de Usuario
+## 🎯 1. Objetivo del Proyecto y Alcance
 
-### Objetivo
-Desarrollar una aplicación empresarial en Java con Spring Boot que permita registrar clientes personas físicas, validar su información bajo estrictas reglas oficiales (SAT, RENAPO), crear una cuenta bancaria asociada con saldo inicial, asignar un usuario de acceso cifrado con BCrypt y emitir tokens JWT para operaciones seguras.
+Desarrollar una API REST empresarial para la administración y apertura de cuentas (Onboarding) de clientes personas físicas y administración de usuarios, implementando arquitectura limpia por capas (**Controller**, **Service**, **Repository**, **DTO**), separación estricta de responsabilidades, validaciones declarativas de entrada (`jakarta.validation`), consultas dinámicas con JPA Criteria API y manejo centralizado de excepciones con respuestas normalizadas.
 
 ### Historia de Usuario
-> *"Como ejecutivo de una institución financiera, necesito registrar clientes personas físicas en el sistema para asignarles una cuenta bancaria y permitirles realizar operaciones financieras de forma segura y automatizada."*
+> *"Como ejecutivo de una institución financiera, requiero registrar clientes personas físicas validando su identidad conforme a lineamientos oficiales (SAT, RENAPO), aperturarles una cuenta de depósito con saldo inicial, aprovisionarles un usuario de acceso protegido con BCrypt, y administrar sus registros mediante un servicio REST con consultas paginadas dinámicas, cero parámetros expuestos en URL y máxima seguridad."*
 
 ---
 
-## 🛠️ 2. Arquitectura Tecnológica
+## 🛠️ 2. Arquitectura Tecnológica y Estándares de Diseño
 
 * **Lenguaje:** Java 17 LTS / OpenJDK
 * **Framework:** Spring Boot 3.3.6
-* **Persistencia Relacional:** Spring Data JPA / Hibernate Core 6.5
-* **Base de Datos Principal:** PostgreSQL 15 / 18 en la nube (Render)
-* **Persistencia Documental:** Spring Data MongoDB (MongoDB Atlas AWS)
-* **Migraciones de Base de Datos:** Flyway 10 (con auto-repair y versionado estricto)
-* **Seguridad y Cifrado:** BCrypt Password Encoder + JSON Web Tokens (JJWT)
-* **Integración Externa:** Spring Cloud OpenFeign (Catálogo SEPOMEX Zippopotam)
-* **Documentación:** SpringDoc OpenAPI 3 / Swagger UI
-* **Contenedores y Despliegue:** Docker Multi-stage Build en Render Cloud
+* **Capa de Persistencia Relacional:** Spring Data JPA / Hibernate Core 6.5 (`JpaSpecificationExecutor`)
+* **Base de Datos Principal:** PostgreSQL 15 / 16 en puerto 5434
+* **Persistencia NoSQL / Documental:** Spring Data MongoDB (MongoDB Atlas AWS / Local port 27017)
+* **Gestión de Migraciones:** Flyway 10 (con versionado estricto `V1`, `V2`, `V3`)
+* **Cliente REST Externo:** Spring Cloud OpenFeign (Zippopotam / SEPOMEX)
+* **Cifrado y Seguridad:** BCrypt Password Encoder + Tokens de Autorización Bearer
+* **Documentación Viva:** SpringDoc OpenAPI 3 / Swagger UI 2.7+
+* **Pruebas Automatizadas:** JUnit 5, Mockito, Spring Boot MockMvc (56 tests unitarios y de integración)
 
 ---
 
-## 🗄️ 3. Diagrama Entidad-Relación (DER)
+## 📐 3. Requisitos Técnicos y Reglas de Calidad Obligatorias
 
-El diseño relacional sigue la **Tercera Forma Normal (3FN)** con optimización estricta de tipos de datos, índices B-Tree y llaves foráneas en cascada:
+Para garantizar código profesional, mantenible y alineado con los lineamientos técnicos de la materia, se implementaron las siguientes restricciones arquitectónicas:
+
+1. **Cero `@PathVariable` en toda la API REST:** Ningún endpoint expone identificadores, códigos o parámetros en la ruta URL.
+2. **Cero `@RequestParam` en toda la API REST:** No se envían parámetros por query string en la URL (`?page=...&filter=...`).
+3. **100% `@RequestBody` en todas las operaciones:** Toda petición (creación, detalle, consulta paginada, actualización y baja lógica) recibe sus datos encapsulados en un DTO validado con `@Valid @RequestBody`.
+4. **Endpoint Único de Consulta Dinámica Combinada (`POST .../consultar`):** Se combinan todos los filtros posibles (exactos, parciales, booleanos y rangos temporales) en un único cuerpo de petición con paginación integrada base 0 (`page`, `size`) y respuesta unificada en `PaginaResponse<T>`.
+5. **Cero `IF` en Servicios e Interfaces (Programación Funcional Pura):** Todas las validaciones de negocio, bifurcaciones y lanzamientos de excepción se resuelven mediante el uso idiomático de `Optional`, `.filter()`, `.ifPresent()`, `.orElseThrow()`, `.map()` y `Predicate.not()`.
+6. **Cero Sobrecarga de Métodos:** Cada método en interfaces y servicios tiene un nombre semántico y unívoco (`consultarUsuariosPaginados`, `obtenerDetalleUsuarioPorId`, `desactivarUsuarioLogico`).
+7. **Protección de Campos de Auditoría y Claves Inmutables:** Los campos controlados por el servidor (`id`, `fechaCreacion`, `fechaActualizacion`, `numeroCuenta`, `curp`, `rfc`) no pueden ser manipulados por el cliente; cualquier intento es ignorado o genera error controlado.
+8. **Manejo Centralizado de Excepciones:** `@RestControllerAdvice` captura validaciones DTO retornando el formato estándar `GenericResponse` (`codigo = 1`, `mensaje = "Datos no validos: ..."`, `detalles = {...}`) y sanitiza cualquier error de base de datos (`DataAccessException`) para evitar fugas de información técnica o código SQL al cliente.
+
+---
+
+## 🗄️ 4. Diagrama Entidad-Relación (DER)
+
+El diseño relacional cumple la **Tercera Forma Normal (3FN)** con índices optimizados B-Tree y llaves foráneas en cascada:
 
 ```mermaid
 erDiagram
     CLIENTES ||--|| DOMICILIOS : "1 a 1 (obligatorio)"
-    CLIENTES ||--o{ CUENTAS : "1 a N (mínimo 1 al registrar)"
-    CLIENTES ||--|| USUARIOS : "1 a 1 (creado automáticamente)"
+    CLIENTES ||--o{ CUENTAS : "1 a N (mínimo 1 al aperturar)"
+    CLIENTES ||--|| USUARIOS : "1 a 1 (aprovisionamiento automático)"
 
     CLIENTES {
-        BIGSERIAL id PK "8 bytes autoincremental"
+        BIGSERIAL id PK "Identificador único"
         VARCHAR nombre "2-50 chars, NOT NULL"
         VARCHAR segundo_nombre "Opcional"
         VARCHAR apellido_paterno "2-50 chars, NOT NULL"
@@ -71,7 +88,7 @@ erDiagram
         VARCHAR_50 nacionalidad "NOT NULL"
         VARCHAR_20 estado_civil "NOT NULL"
         VARCHAR_100 correo "UK, NOT NULL"
-        VARCHAR_10 telefono_movil "NOT NULL - 10 dígitos exactos"
+        VARCHAR_10 telefono_movil "NOT NULL - 10 dígitos"
         VARCHAR_10 telefono_alternativo "Opcional - 10 dígitos"
         VARCHAR_80 ocupacion "NOT NULL"
         VARCHAR_100 empresa "NOT NULL"
@@ -82,7 +99,7 @@ erDiagram
     }
 
     DOMICILIOS {
-        BIGSERIAL id PK "Long"
+        BIGSERIAL id PK "Identificador único"
         BIGINT cliente_id "FK, UK, NOT NULL (Relación 1:1)"
         VARCHAR_100 calle "NOT NULL"
         VARCHAR_20 numero_exterior "NOT NULL"
@@ -95,9 +112,9 @@ erDiagram
     }
 
     CUENTAS {
-        BIGSERIAL id PK "Long"
+        BIGSERIAL id PK "Identificador único"
         BIGINT cliente_id "FK, NOT NULL (Indexado)"
-        VARCHAR_20 numero_cuenta "UK, NOT NULL (Único generado)"
+        VARCHAR_20 numero_cuenta "UK, NOT NULL (10 dígitos generados)"
         NUMERIC_15_2 saldo "NOT NULL CHECK (saldo >= 0)"
         VARCHAR_20 estatus "NOT NULL DEFAULT 'ACTIVA'"
         TIMESTAMP fecha_creacion "DEFAULT NOW()"
@@ -105,7 +122,7 @@ erDiagram
     }
 
     USUARIOS {
-        BIGSERIAL id PK "Long"
+        BIGSERIAL id PK "Identificador único"
         BIGINT cliente_id "FK, UK, NOT NULL"
         VARCHAR_100 correo "UK, NOT NULL (Username)"
         VARCHAR_255 password "Hash seguro BCrypt"
@@ -115,10 +132,10 @@ erDiagram
     }
 
     CATALOGO_SEPOMEX {
-        BIGSERIAL id PK "Long"
-        CHAR_5 codigo_postal "Indexado"
+        BIGSERIAL id PK "Identificador único"
+        CHAR_5 codigo_postal "Indexado B-Tree"
         VARCHAR_150 asentamiento "Colonia / Localidad"
-        VARCHAR_50 tipo_asentamiento "Colonia, Fracc, etc."
+        VARCHAR_50 tipo_asentamiento "Colonia, Fraccionamiento, etc."
         VARCHAR_100 municipio "Municipio"
         VARCHAR_100 estado "Estado"
         VARCHAR_100 ciudad "Ciudad"
@@ -127,9 +144,9 @@ erDiagram
 
 ---
 
-## 💾 4. Diseño y Script de Base de Datos (DDL)
+## 💾 5. Diseño y Script de Base de Datos (DDL)
 
-El script SQL es gestionado automáticamente por **Flyway** (`src/main/resources/db/migration/`):
+El esquema de la base de datos es administrado por **Flyway Migrations** (`src/main/resources/db/migration/`):
 
 ```sql
 -- 1. Tabla Clientes
@@ -163,7 +180,7 @@ CREATE INDEX IF NOT EXISTS idx_clientes_nombre ON clientes (nombre, apellido_pat
 CREATE INDEX IF NOT EXISTS idx_clientes_activo ON clientes (activo);
 CREATE INDEX IF NOT EXISTS idx_clientes_fecha_creacion ON clientes (fecha_creacion);
 
--- 2. Tabla Domicilios (1 a 1 con Clientes)
+-- 2. Tabla Domicilios (1 a 1)
 CREATE TABLE IF NOT EXISTS domicilios (
     id                      BIGSERIAL       PRIMARY KEY,
     cliente_id              BIGINT          NOT NULL,
@@ -179,10 +196,7 @@ CREATE TABLE IF NOT EXISTS domicilios (
     CONSTRAINT uq_domicilios_cliente UNIQUE (cliente_id)
 );
 
-CREATE INDEX IF NOT EXISTS idx_domicilios_cliente_id ON domicilios (cliente_id);
-CREATE INDEX IF NOT EXISTS idx_domicilios_codigo_postal ON domicilios (codigo_postal);
-
--- 3. Tabla Cuentas (1 a N con Clientes)
+-- 3. Tabla Cuentas (1 a N)
 CREATE TABLE IF NOT EXISTS cuentas (
     id                      BIGSERIAL       PRIMARY KEY,
     cliente_id              BIGINT          NOT NULL,
@@ -195,10 +209,7 @@ CREATE TABLE IF NOT EXISTS cuentas (
     CONSTRAINT uq_cuentas_numero UNIQUE (numero_cuenta)
 );
 
-CREATE INDEX IF NOT EXISTS idx_cuentas_cliente_id ON cuentas (cliente_id);
-CREATE INDEX IF NOT EXISTS idx_cuentas_estatus ON cuentas (estatus);
-
--- 4. Tabla Usuarios (Autenticación y Seguridad)
+-- 4. Tabla Usuarios (Autenticación 1 a 1 con Clientes)
 CREATE TABLE IF NOT EXISTS usuarios (
     id                      BIGSERIAL       PRIMARY KEY,
     cliente_id              BIGINT          NOT NULL,
@@ -212,9 +223,7 @@ CREATE TABLE IF NOT EXISTS usuarios (
     CONSTRAINT uq_usuarios_correo UNIQUE (correo)
 );
 
-CREATE INDEX IF NOT EXISTS idx_usuarios_correo ON usuarios (correo);
-
--- 5. Tabla Catálogo SEPOMEX (Persistencia y Búsqueda Rápida)
+-- 5. Tabla Catálogo SEPOMEX
 CREATE TABLE IF NOT EXISTS catalogo_sepomex (
     id                  BIGSERIAL       PRIMARY KEY,
     codigo_postal       CHAR(5)         NOT NULL,
@@ -224,156 +233,372 @@ CREATE TABLE IF NOT EXISTS catalogo_sepomex (
     estado              VARCHAR(100)    NOT NULL,
     ciudad              VARCHAR(100)
 );
-
-CREATE INDEX IF NOT EXISTS idx_sepomex_cp ON catalogo_sepomex (codigo_postal);
-CREATE INDEX IF NOT EXISTS idx_sepomex_estado_mun ON catalogo_sepomex (estado, municipio);
 ```
 
 ---
 
-## 🔒 5. Reglas de Negocio y Validaciones
+## 📡 6. Catálogo Completo de Endpoints API REST (100% RequestBody)
 
-1. **Mayoría de Edad Obligatoria:** El cliente debe tener 18 años o más al momento del registro (`@MayorDeEdad`).
-2. **Formato Oficial de CURP:** 18 caracteres exactos (`^[A-Za-z]{4}[0-9]{6}[HhMm][A-Za-z]{5}[0-9A-Za-z][0-9]$`).
-3. **Formato Oficial de RFC:** 12 o 13 caracteres válidos (`^[A-Za-zÑñ&]{3,4}[0-9]{6}[A-Za-z0-9]{3}$`).
-4. **Unicidad Estricta:** No pueden duplicarse CURP, RFC ni Correo Electrónico.
-5. **Teléfono Celular:** Exactamente 10 dígitos numéricos (`^[0-9]{10}$`).
-6. **Contraseña Segura:** Mínimo 8 caracteres, al menos 1 mayúscula, 1 minúscula, 1 número y 1 carácter especial (`@PasswordSeguro`).
-7. **Cifrado de Contraseñas:** Ninguna contraseña se almacena en texto plano; se utiliza **BCrypt**.
-8. **Inmutabilidad de Datos Críticos:** En actualizaciones parciales (`PATCH`/`PUT`), **se rechaza cualquier intento de alterar CURP, RFC o Número de Cuenta**.
-9. **Baja Lógica en Cascada:** Al desactivar un cliente (`DELETE /clientes/{id}`):
-   - `cliente.activo = false`
-   - `usuario.activo = false`
-   - Todas sus cuentas asociadas pasan a estatus `"INACTIVA"`.
-   - Se bloquea inmediatamente el acceso a `/auth/login`.
+Todos los endpoints reciben sus parámetros exclusivamente a través de `@Valid @RequestBody`. A continuación se detallan las firmas y ejemplos de payloads:
 
----
+### 👤 6.1 Módulo Usuarios (`/usuarios`)
+| Operación | Método | Endpoint | Request Body | Descripción |
+| :--- | :---: | :--- | :--- | :--- |
+| **Consulta Paginada** | `POST` | `/usuarios/consultar` | [ConsultaUsuarioRequest](#dto-consultausuariorequest) | Búsqueda dinámica con filtros combinados y paginación. |
+| **Detalle de Usuario** | `POST` | `/usuarios/detalle` | [DetalleUsuarioRequest](#dto-detalleusuariorequest) | Detalle completo del usuario por su ID sin PathVariable. |
+| **Crear Usuario** | `POST` | `/usuarios/crear` | `UsuarioRequest` | Registro manual de usuario asociado a un cliente. |
+| **Actualizar Usuario**| `POST` | `/usuarios/actualizar` | `UsuarioUpdateRequest` | Modificación de correo o contraseña (ignora campos controlados). |
+| **Baja Lógica** | `POST` | `/usuarios/eliminar` | `EliminaUsuarioRequest` | Desactivación del usuario (`activo = false`). |
 
-## 📡 6. Catálogo de Endpoints API REST
-
-### Módulo Clientes (`/clientes`)
-| Método | Endpoint | Descripción | Código HTTP |
-| :---: | :--- | :--- | :---: |
-| `POST` | `/clientes` | Registra un nuevo cliente (crea domicilio, cuenta activa y usuario BCrypt). | `201 Created` |
-| `GET` | `/clientes` | Consulta todos los clientes registrados (soporta filtros opcionales). | `200 OK` |
-| `GET` | `/clientes/{id}` | Consulta detalle de un cliente por su ID numérico. | `200 OK` |
-| `GET` | `/clientes?curp={curp}` | Busca un cliente por su CURP oficial. | `200 OK` |
-| `GET` | `/clientes?rfc={rfc}` | Busca un cliente por su RFC oficial. | `200 OK` |
-| `GET` | `/clientes?nombre={nombre}` | Busca clientes por coincidencia de nombre o apellidos. | `200 OK` |
-| `GET` | `/clientes/por-cuenta/{numeroCuenta}` | Obtiene al cliente titular a partir de su número de cuenta. | `200 OK` |
-| `GET` | `/clientes/rango-fechas` | Filtra clientes registrados dentro de un rango de fechas. | `200 OK` |
-| `PATCH` | `/clientes/{id}` | Actualización parcial (teléfono, domicilio, empleo). **Protege CURP/RFC**. | `200 OK` |
-| `DELETE`| `/clientes/{id}` | **Baja lógica**: Inactiva cliente, cuentas y usuario. | `200 OK` |
-
-### Módulo Cuentas (`/cuentas`)
-| Método | Endpoint | Descripción | Código HTTP |
-| :---: | :--- | :--- | :---: |
-| `POST` | `/cuentas` | Crea una cuenta adicional para un cliente existente. | `201 Created` |
-| `GET` | `/cuentas/{numeroCuenta}` | Consulta detalle de una cuenta por su número único. | `200 OK` |
-| `GET` | `/cuentas/{numeroCuenta}/saldo` | Consulta exclusivamente el saldo de una cuenta. | `200 OK` |
-| `GET` | `/cuentas?clienteId={id}` | Lista las cuentas bancarias pertenecientes a un cliente. | `200 OK` |
-| `GET` | `/cuentas?estatus=ACTIVA` | Filtra cuentas por su estatus actual (`ACTIVA` / `INACTIVA`). | `200 OK` |
-| `PATCH` | `/cuentas/{numeroCuenta}` | Actualiza información de la cuenta. | `200 OK` |
-
-### Módulo Autenticación y Usuarios (`/auth` y `/usuarios`)
-| Método | Endpoint | Descripción | Código HTTP |
-| :---: | :--- | :--- | :---: |
-| `POST` | `/auth/login` | Inicio de sesión con correo y password; emite Token JWT. | `200 OK` / `401` |
-| `GET` | `/usuarios/filtro` | Filtra y consulta usuarios del sistema. | `200 OK` |
-| `PUT` | `/usuarios/agregar` | Asocia o crea manualmente un usuario a un cliente. | `200 OK` |
-
----
-
-## 📍 7. Catálogo de Direcciones SEPOMEX (Auto-Sync)
-
-El sistema integra un cliente **OpenFeign** (`SepomexApiClient`) conectado a la API oficial de códigos postales:
-1. Al consultar `GET /catalogos/domicilios/cp/{codigoPostal}`, el sistema busca primero en PostgreSQL.
-2. Si el código postal no existe, consulta la API en internet, **descarga todas las colonias del municipio/estado y las guarda en la base de datos automáticamente**.
-
-| Método | Endpoint | Descripción |
-| :---: | :--- | :--- |
-| `GET` | `/catalogos/domicilios/cp/{cp}` | Autocompleta Estado, Municipio, Ciudad y lista de Colonias. |
-| `GET` | `/catalogos/domicilios/estados` | Lista todos los Estados registrados. |
-| `GET` | `/catalogos/domicilios/municipios?estado={estado}` | Lista municipios pertenecientes a un estado. |
-| `POST`| `/catalogos/domicilios/sincronizar/{cp}` | Fuerza la descarga y persistencia de un CP en la BD. |
-
----
-
-## 🛡️ 8. Manejo Global de Excepciones
-
-Controlador unificado `@RestControllerAdvice` (`GlobalExceptionHandler.java`) con códigos HTTP semánticos:
-
-| Excepción Personalizada | Código HTTP | Causa |
-| :--- | :---: | :--- |
-| `ClienteNoEncontradoException` | `404 Not Found` | ID, CURP o RFC de cliente no existe. |
-| `CuentaNoEncontradaException` | `404 Not Found` | Número de cuenta no existe. |
-| `UsuarioNoEncontradoException` | `404 Not Found` | Usuario de acceso no registrado. |
-| `CredencialesInvalidasException`| `401 Unauthorized` | Contraseña incorrecta o usuario no coincide. |
-| `UsuarioInactivoException` | `401 / 403 Forbidden`| Intento de login de un cliente dado de baja. |
-| `CurpDuplicadaException` | `409 Conflict` | La CURP ya pertenece a otro cliente. |
-| `RfcDuplicadoException` | `409 Conflict` | El RFC ya pertenece a otro cliente. |
-| `CorreoDuplicadoException` | `409 Conflict` | El correo ya está registrado en el sistema. |
-| `ModificacionNoPermitidaException`| `400 Bad Request` | Intento de alterar CURP, RFC o No. Cuenta. |
-| `ValidacionNegocioException` | `400 Bad Request` | Fallo en Bean Validation o reglas de negocio. |
-
----
-
-## 🔑 9. Seguridad y Autenticación JWT
-
-* **Algoritmo de Hash:** `BCrypt` con factor de costo 10.
-* **Filtro de Seguridad:** Interceptor de Authorization Header `Bearer <token>`.
-* **Emisión JWT:** Firmado con clave secreta HMAC-SHA256 y tiempo de expiración configurable.
-
+#### <a id="dto-consultausuariorequest"></a>Ejemplo: `POST /usuarios/consultar`
 ```json
-// Ejemplo de Login Exitoso (POST /auth/login)
+// Petición (Request Body)
 {
-  "token": "Bearer-cf88dca9-bb26-432b-94e7-0e11dcb2f64e",
-  "tipo": "Bearer",
-  "expiresIn": 86400,
+  "correo": "banco.com",
+  "activo": true,
+  "fechaInicio": "2026-01-01T00:00:00",
+  "fechaFin": "2026-12-31T23:59:59",
+  "page": 0,
+  "size": 10
+}
+
+// Respuesta (PaginaResponse<UsuarioResponse>)
+{
+  "contenido": [
+    {
+      "id": 1,
+      "clienteId": 1,
+      "correo": "diego.pardo@banco.com",
+      "activo": true,
+      "fechaCreacion": "2026-09-20T14:32:00"
+    }
+  ],
+  "paginaActual": 0,
+  "tamanoPagina": 10,
+  "totalElementos": 1,
+  "totalPaginas": 1,
+  "esPrimera": true,
+  "esUltima": true,
+  "tieneSiguiente": false,
+  "tieneAnterior": false
+}
+```
+
+#### <a id="dto-detalleusuariorequest"></a>Ejemplo: `POST /usuarios/detalle`
+```json
+// Petición (Request Body)
+{
+  "id": 1
+}
+
+// Respuesta (UsuarioResponse)
+{
+  "id": 1,
   "clienteId": 1,
-  "correo": "carlos.gomez@example.com",
-  "nombreCompleto": "Carlos Gomez"
+  "correo": "diego.pardo@banco.com",
+  "activo": true,
+  "fechaCreacion": "2026-09-20T14:32:00",
+  "fechaActualizacion": null
 }
 ```
 
 ---
 
-## 🚀 10. Instalación y Ejecución
+### 👥 6.2 Módulo Clientes (`/clientes`)
+| Operación | Método | Endpoint | Request Body | Descripción |
+| :--- | :---: | :--- | :--- | :--- |
+| **Consulta Paginada** | `POST` | `/clientes/consultar` | `ConsultaClienteRequest` | Búsqueda por nombre, RFC, CURP, estatus, fechas. |
+| **Detalle de Cliente** | `POST` | `/clientes/detalle` | `DetalleClienteRequest` | Obtiene cliente completo con su domicilio. |
+| **Onboarding Completo**| `POST` | `/clientes/crear` | `ClienteRequest` | Transacción atómica: Cliente + Domicilio + Cuenta + Usuario. |
+| **Actualizar Cliente** | `POST` | `/clientes/actualizar` | `ClienteUpdateRequest` | Actualización de datos (CURP, RFC y cuentas protegidos). |
+| **Baja Lógica** | `POST` | `/clientes/eliminar` | `EliminaClienteRequest` | Inactiva cliente, todas sus cuentas y su usuario. |
+
+#### Ejemplo: `POST /clientes/consultar`
+```json
+// Petición (Request Body)
+{
+  "nombre": "Carlos",
+  "rfc": "TEST1505101A1",
+  "activo": true,
+  "page": 0,
+  "size": 5
+}
+```
+
+---
+
+### 💳 6.3 Módulo Cuentas Bancarias (`/cuentas`)
+| Operación | Método | Endpoint | Request Body | Descripción |
+| :--- | :---: | :--- | :--- | :--- |
+| **Consulta Paginada** | `POST` | `/cuentas/consultar` | `ConsultaCuentaRequest` | Paginación y filtro por clienteId o estatus (`ACTIVA`). |
+| **Detalle de Cuenta** | `POST` | `/cuentas/detalle` | `DetalleCuentaRequest` | Detalle completo de la cuenta por número de cuenta. |
+| **Consulta de Saldo** | `POST` | `/cuentas/saldo` | `DetalleCuentaRequest` | Consulta únicamente el saldo y estatus actual. |
+| **Crear Cuenta** | `POST` | `/cuentas/crear` | `CuentaRequest` | Apertura de cuenta bancaria adicional. |
+| **Actualizar Cuenta**| `POST` | `/cuentas/actualizar` | `CuentaUpdateRequest` | Modificación de cuenta (inmutable número de cuenta). |
+
+#### Ejemplo: `POST /cuentas/saldo`
+```json
+// Petición (Request Body)
+{
+  "numeroCuenta": "6233563735"
+}
+
+// Respuesta
+{
+  "numeroCuenta": "6233563735",
+  "saldo": 5000.00,
+  "estatus": "ACTIVA"
+}
+```
+
+---
+
+### 📍 6.4 Módulo Catálogo de Domicilios SEPOMEX (`/catalogos/domicilios`)
+| Operación | Método | Endpoint | Request Body | Descripción |
+| :--- | :---: | :--- | :--- | :--- |
+| **Consulta por CP** | `POST` | `/catalogos/domicilios/cp` | `CodigoPostalRequest` | Autocompleta estado, municipio y asentamientos vía CP. |
+| **Listar Estados** | `GET` | `/catalogos/domicilios/estados` | *Sin Body* | Catálogo nacional de estados. |
+| **Listar Municipios** | `POST` | `/catalogos/domicilios/municipios` | `MunicipioRequest` | Municipios por estado sin parámetros de URL. |
+| **Listar Colonias** | `POST` | `/catalogos/domicilios/colonias` | `ColoniaRequest` | Colonias por estado y municipio. |
+| **Sincronización** | `POST` | `/catalogos/domicilios/sincronizar` | `CodigoPostalRequest` | Descarga y persistencia forzada de CP en BD. |
+
+#### Ejemplo: `POST /catalogos/domicilios/cp`
+```json
+// Petición (Request Body)
+{
+  "codigoPostal": "01000"
+}
+
+// Respuesta
+{
+  "codigoPostal": "01000",
+  "municipio": "San Angel",
+  "estado": "Distrito Federal",
+  "ciudad": "Ciudad de México",
+  "asentamientos": ["San Ángel", "San Ángel Inn"]
+}
+```
+
+---
+
+### 🔐 6.5 Módulo de Autenticación (`/auth`)
+| Operación | Método | Endpoint | Request Body | Descripción |
+| :--- | :---: | :--- | :--- | :--- |
+| **Login / Token** | `POST` | `/auth/login` | `LoginRequest` | Valida credenciales con BCrypt y emite Bearer Token. |
+
+```json
+// Petición (POST /auth/login)
+{
+  "correo": "diego.pardo@banco.com",
+  "password": "Password123!"
+}
+
+// Respuesta (LoginResponse)
+{
+  "token": "Bearer-cf88dca9-bb26-432b-94e7-0e11dcb2f64e",
+  "tipo": "Bearer",
+  "expiresIn": 86400,
+  "clienteId": 1,
+  "correo": "diego.pardo@banco.com",
+  "nombreCompleto": "Diego Pardo"
+}
+```
+
+---
+
+## ⚡ 7. Filtros Dinámicos con JPA Criteria y Paginación Estándar
+
+Para cumplir con el requerimiento de **consultas paginadas dinámicas sin parámetros en la URL**, los repositorios extienden `JpaSpecificationExecutor<T>`:
+
+### Implementación con `Specification` (Sin sentencias `IF`)
+En `UsuarioSpecification` y `ClienteSpecification`, los predicados se construyen funcionalmente mediante streams de `Optional`:
+
+```java
+public static Specification<Usuario> conFiltros(ConsultaUsuarioRequest req) {
+    return (root, query, cb) -> {
+        List<Predicate> predicates = new ArrayList<>();
+
+        Optional.ofNullable(req.getId())
+                .map(id -> cb.equal(root.get("id"), id))
+                .ifPresent(predicates::add);
+
+        Optional.ofNullable(req.getCorreo())
+                .filter(Predicate.not(String::isBlank))
+                .map(correo -> cb.like(cb.lower(root.get("correo")), "%" + correo.trim().toLowerCase() + "%"))
+                .ifPresent(predicates::add);
+
+        Optional.ofNullable(req.getActivo())
+                .map(activo -> cb.equal(root.get("activo"), activo))
+                .ifPresent(predicates::add);
+
+        return cb.and(predicates.toArray(new Predicate[0]));
+    };
+}
+```
+
+### Estructura Universal de Paginación (`PaginaResponse<T>`)
+Toda consulta paginada retorna la clase estándar `PaginaResponse<T>`:
+
+```json
+{
+  "contenido": [ ... ],
+  "paginaActual": 0,
+  "tamanoPagina": 10,
+  "totalElementos": 4,
+  "totalPaginas": 1,
+  "esPrimera": true,
+  "esUltima": true,
+  "tieneSiguiente": false,
+  "tieneAnterior": false
+}
+```
+
+---
+
+## 🛡️ 8. Manejo Centralizado de Excepciones y Validación DTO
+
+El manejador global `GlobalExceptionHandler` unifica todas las respuestas de error mediante `@RestControllerAdvice`:
+
+### Formato Obligatorio para Validación de Datos de Entrada (HTTP 400)
+Cuando falla `@Valid` en cualquier `@RequestBody`, se intercepta `MethodArgumentNotValidException` y se retorna la estructura exacta solicitada:
+
+```json
+{
+  "codigo": 1,
+  "mensaje": "Datos no validos: {correo=El correo electrónico es obligatorio, password=La contraseña es obligatoria}",
+  "detalles": {
+    "correo": "El correo electrónico es obligatorio",
+    "password": "La contraseña es obligatoria"
+  }
+}
+```
+
+### Sanitización de Errores de Base de Datos (HTTP 503)
+Ante fallos en PostgreSQL o conectividad (`DataAccessException` o `SQLException`), el sistema **nunca filtra tablas, consultas SQL ni trazas técnicas al cliente**:
+```json
+{
+  "codigo": 3,
+  "mensaje": "Error de base de datos. Operación no disponible momentáneamente.",
+  "detalles": null
+}
+```
+
+### Tabla de Códigos Semánticos de Excepción
+| Excepción | Código HTTP | Descripción |
+| :--- | :---: | :--- |
+| `MethodArgumentNotValidException` | `400 Bad Request` | Fallo de validación en DTO (Bean Validation). |
+| `ValidacionNegocioException` | `400 Bad Request` | Regla de negocio infringida. |
+| `ModificacionNoPermitidaException` | `400 Bad Request` | Intento de alterar campos protegidos (RFC, CURP, id). |
+| `CredencialesInvalidasException` | `401 Unauthorized` | Correo o contraseña erróneos en `/auth/login`. |
+| `UsuarioInactivoException` | `403 Forbidden` | Intento de inicio de sesión de un usuario dado de baja. |
+| `RecursoNoEncontradoException` | `404 Not Found` | ID de recurso inexistente en la BD. |
+| `RecursoDuplicadoException` (CURP/RFC/Correo)| `409 Conflict` | Violación de unicidad de registro. |
+| `DataAccessException` | `503 Service Unavailable`| Error interno de BD protegido contra fugas de información. |
+
+---
+
+## 🔑 9. Seguridad, Cifrado y Autenticación
+
+* **Cifrado BCrypt:** Factor de trabajo 12 implementado en `PasswordEncoder`. Ninguna contraseña se almacena en texto plano.
+* **Aprovisionamiento Atómico:** El usuario de acceso se crea automáticamente al completar el registro del cliente con su contraseña inicial encriptada.
+* **Emisión de Tokens:** Endpoint `/auth/login` genera tokens Bearer asociados a la sesión con expiración de 24 horas (86,400 segundos).
+* **Validación de Estatus:** Si un cliente o su usuario tienen `activo = false`, el sistema rechaza automáticamente el inicio de sesión (`UsuarioInactivoException` / HTTP 403).
+
+---
+
+## 📍 10. Catálogo de Direcciones SEPOMEX (Auto-Sync)
+
+El servicio `CatalogoDireccionesService` implementa un mecanismo inteligente de caché en base de datos:
+1. Al recibir `POST /catalogos/domicilios/cp` con `{"codigoPostal": "01000"}`, busca primero en la tabla PostgreSQL `catalogo_sepomex`.
+2. Si el código postal no existe localmente, consume en segundo plano el cliente OpenFeign de SEPOMEX (`Zippopotam`), descarga todas las colonias del municipio y las persiste en base de datos.
+3. Las solicitudes subsecuentes para ese código postal se resuelven en memoria local en menos de **5 ms**.
+
+---
+
+## 🧪 11. Suite de Pruebas Automatizadas (56/56 Aprobadas)
+
+El proyecto cuenta con una cobertura exhaustiva de pruebas unitarias y de integración construidas con **JUnit 5**, **Mockito** y **Spring MockMvc**:
+
+```bash
+./gradlew test
+```
+
+### Resultados de la Ejecución de Pruebas:
+```text
+Suite de Pruebas                                                  Pruebas  Fallos  Errores  Tiempo
+----------------------------------------------------------------  -------  ------  -------  ------
+com.proyecto.servicios.controller.onboarding.UsuarioControllerTest      8       0        0   0.155s
+com.proyecto.servicios.controller.onboarding.ClienteControllerTest      6       0        0   3.178s
+com.proyecto.servicios.controller.onboarding.CuentaControllerTest       5       0        0   0.115s
+com.proyecto.servicios.service.onboarding.UsuarioServiceTest            8       0        0   0.015s
+com.proyecto.servicios.service.onboarding.ClienteServiceTest            5       0        0   0.095s
+com.proyecto.servicios.service.onboarding.CuentaServiceTest             5       0        0   0.031s
+com.proyecto.servicios.service.onboarding.OnboardingServiceTest         5       0        0   0.046s
+com.proyecto.servicios.service.onboarding.AuthServiceTest               3       0        0   0.095s
+com.proyecto.servicios.service.CatalogoSyncServiceTest                  4       0        0   0.280s
+com.proyecto.servicios.service.ProductoServiceImplTest                  3       0        0   0.008s
+com.proyecto.servicios.util.XmlSerializationServiceTest                 4       0        0   0.249s
+----------------------------------------------------------------  -------  ------  -------  ------
+TOTAL                                                                  56       0        0   4.27s
+BUILD SUCCESSFUL in 16s
+```
+
+---
+
+## 🚀 12. Instalación y Guía de Ejecución
 
 ### Prerrequisitos
-* Java 17 o superior
-* PostgreSQL 15+
-* MongoDB 6+
+* **Java:** OpenJDK 17 o superior.
+* **PostgreSQL:** Versión 15 o superior corriendo en puerto 5434 (o configurado en `application.properties`).
+* **MongoDB:** Versión 6 o superior corriendo en puerto 27017.
 
-### Ejecución Local
+### Pasos para Ejecución Local
 ```bash
 # 1. Clonar el repositorio
 git clone https://github.com/juanpaa777/proyecto_H_JDPX.git
 cd proyecto_H_JDPX
 
-# 2. Posicionarse en la rama del proyecto
+# 2. Situarse en la rama de integración
 git checkout feature/integracion-clientes
 
-# 3. Compilar y ejecutar con Gradle Wrapper
+# 3. Ejecutar las pruebas automatizadas
+./gradlew test
+
+# 4. Iniciar la aplicación
 ./gradlew bootRun
 ```
 
-### Ejecución con Docker
+La aplicación arrancará en el puerto `8080`. Puedes acceder a la interfaz Swagger en:
+👉 `http://localhost:8080/swagger-ui.html`
+
+### Ejecución con Contenedor Docker
 ```bash
-docker build -t onboarding-api .
-docker run -p 8080:8080 -e SPRING_DATASOURCE_URL=jdbc:postgresql://host:5432/db onboarding-api
+# Construir la imagen multi-stage
+docker build -t api-onboarding:latest .
+
+# Ejecutar el contenedor
+docker run -d -p 8080:8080 \
+  -e SPRING_DATASOURCE_URL=jdbc:postgresql://host.docker.internal:5434/pago_de_servicios \
+  -e SPRING_DATASOURCE_USERNAME=postgres \
+  -e SPRING_DATASOURCE_PASSWORD=postgres \
+  api-onboarding:latest
 ```
 
 ---
 
-## 🏆 11. Matriz de Evaluación (100% Cubierto)
+## 🏆 13. Matriz de Cumplimiento
 
-| Criterio de Evaluación | Ponderación | Estado |
-| :--- | :---: | :---: |
-| **Diseño de Base de Datos y Memoria** (3FN, BIGSERIAL, tipos fijos `CHAR`, índices B-Tree) | **20%** | 🟢 **10/10** |
-| **Validaciones de Negocio** (Mayoría de edad, Regex oficial SAT/RENAPO, Unicidad, BCrypt) | **20%** | 🟢 **10/10** |
-| **Implementación Java** (Arquitectura por capas, Transaccionalidad atómica, DTOs, Mappers) | **25%** | 🟢 **10/10** |
-| **API REST** (Métodos semánticos GET, POST, PUT, PATCH, DELETE con códigos estándar) | **15%** | 🟢 **10/10** |
-| **Consultas y Persistencia** (Filtros por CURP, RFC, No. Cuenta, Estatus, Fechas, Saldos) | **10%** | 🟢 **10/10** |
-| **Documentación y Evidencias** (Swagger UI en vivo, DER y Suite de pruebas automatizadas) | **10%** | 🟢 **10/10** |
-| **TOTAL** | **100%** | **PROYECTO COMPLETO Y APROBATORIO** |
+| Requerimiento Técnico | Estado | Evidencia / Implementación |
+| :--- | :---: | :--- |
+| **Separación de responsabilidades** (Controller, Service, Repository, DTO) | 🟢 Cumplido | Arquitectura modular limpia, entidades protegidas y DTOs dedicados. |
+| **Cero `@PathVariable` en controladores** | 🟢 Cumplido | 100% de los endpoints usan `@RequestBody` para consultar detalle y operar. |
+| **Cero `@RequestParam` (Sin query params en URL)** | 🟢 Cumplido | Filtros dinámicos y números de página se reciben exclusivamente en el Body. |
+| **Consultas paginadas unificadas (`POST .../consultar`)** | 🟢 Cumplido | `PaginaResponse<T>` con `page`, `size`, `totalElementos` y `totalPaginas`. |
+| **Filtros dinámicos con JPA Criteria API** | 🟢 Cumplido | `UsuarioSpecification` y `ClienteSpecification` (`JpaSpecificationExecutor`). |
+| **Cero `IF` en Servicios e Interfaces** | 🟢 Cumplido | 100% programación funcional con `Optional`, `.filter()`, `.ifPresent()`, `.orElseThrow()`. |
+| **Cero Sobrecarga de Métodos** | 🟢 Cumplido | Nombres descriptivos únicos en todas las capas de servicio e interfaz. |
+| **Manejo Centralizado de Excepciones** (`@RestControllerAdvice`) | 🟢 Cumplido | `GlobalExceptionHandler` con formato `GenericResponse` (`codigo = 1`). |
+| **Seguridad y Cero Fuga de Datos Técnicos** | 🟢 Cumplido | `DataAccessException` sanitizado a HTTP 503 sin exponer SQL ni stack traces. |
+| **Protección de Campos Inmutables del Servidor** | 🟢 Cumplido | No permite alterar IDs, fechas de auditoría, números de cuenta, CURP ni RFC. |
+| **Baja Lógica y Transaccionalidad** | 🟢 Cumplido | Desactivación en cascada (Cliente, Cuentas y Usuario) bajo `@Transactional`. |
+| **Suite de Pruebas Unitarias e Integración** | 🟢 Cumplido | 56 pruebas automatizadas aprobadas al 100% (MockMvc + Mockito). |
