@@ -3,6 +3,7 @@ package com.proyecto.servicios.dto.onboarding;
 import com.proyecto.servicios.validation.onboarding.MayorDeEdad;
 import jakarta.validation.Valid;
 import jakarta.validation.constraints.DecimalMin;
+import jakarta.validation.constraints.NotNull;
 import jakarta.validation.constraints.Pattern;
 import jakarta.validation.constraints.Size;
 import lombok.Getter;
@@ -16,6 +17,9 @@ import java.time.LocalDate;
 @Setter
 @NoArgsConstructor
 public class ClienteUpdateRequest {
+
+    @NotNull(message = "El ID del cliente es obligatorio para la actualización")
+    private Long id;
 
     // Datos Personales
     @Pattern(regexp = "^$|^[\\p{L}\\s]{2,50}$", message = "El nombre debe contener solo letras y espacios, entre 2 y 50 caracteres")

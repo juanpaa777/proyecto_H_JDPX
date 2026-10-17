@@ -3,6 +3,7 @@ package com.proyecto.servicios.validation.onboarding;
 import jakarta.validation.ConstraintValidator;
 import jakarta.validation.ConstraintValidatorContext;
 
+import java.util.Optional;
 import java.util.regex.Pattern;
 
 public class PasswordSeguroValidator implements ConstraintValidator<PasswordSeguro, String> {
@@ -15,9 +16,9 @@ public class PasswordSeguroValidator implements ConstraintValidator<PasswordSegu
 
     @Override
     public boolean isValid(String password, ConstraintValidatorContext context) {
-        if (password == null) {
-            return false;
-        }
-        return PATTERN.matcher(password).matches();
+        return Optional.ofNullable(password)
+                .filter(p -> !p.isBlank())
+                .map(p -> PATTERN.matcher(p).matches())
+                .orElse(true);
     }
 }
