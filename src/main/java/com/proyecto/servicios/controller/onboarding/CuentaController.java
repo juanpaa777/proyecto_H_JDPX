@@ -1,81 +1,53 @@
 package com.proyecto.servicios.controller.onboarding;
 
-import com.proyecto.servicios.dto.onboarding.CuentaCreateRequest;
-import com.proyecto.servicios.dto.onboarding.CuentaResponse;
-import com.proyecto.servicios.dto.onboarding.CuentaUpdateRequest;
-import com.proyecto.servicios.dto.onboarding.SaldoResponse;
+import com.proyecto.servicios.dto.onboarding.*;
 import com.proyecto.servicios.service.onboarding.CuentaService;
 import io.swagger.v3.oas.annotations.Operation;
-import io.swagger.v3.oas.annotations.Parameter;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
+import org.springframework.data.domain.Page;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
-import java.util.List;
-
 @RestController
 @RequestMapping("/cuentas")
 @RequiredArgsConstructor
-@Tag(name = "Cuentas", description = "Endpoints para la creación, consulta y actualización de cuentas bancarias")
+@Tag(name = "Cuentas", description = "Endpoints para la gestión, consulta paginada y actualización de cuentas sin PathVariable ni RequestParam (100% RequestBody)")
 public class CuentaController {
 
     private final CuentaService cuentaService;
 
-    @PostMapping
-    @Operation(summary = "Crear una cuenta asociada a un cliente", description = "Genera una nueva cuenta bancaria para un cliente activo existente")
+    @PostMapping("/crear")
+    @Operation(summary = "Crear una cuenta asociada a un cliente", description = "Genera una nueva cuenta bancaria para un cliente activo existente mediante RequestBody")
     public ResponseEntity<CuentaResponse> crearCuenta(@Valid @RequestBody CuentaCreateRequest request) {
-        CuentaResponse response = cuentaService.crearCuenta(request);
+        CuentaResponse response = cuentaService.crearCuentaBancaria(request);
         return ResponseEntity.status(HttpStatus.CREATED).body(response);
     }
 
-    @GetMapping("/{numeroCuenta}")
-    @Operation(summary = "Consultar una cuenta por número de cuenta", description = "Obtiene los detalles de la cuenta por su identificador único de cuenta")
-    public ResponseEntity<CuentaResponse> consultarPorNumeroCuenta(@PathVariable String numeroCuenta) {
-        return ResponseEntity.ok(cuentaService.consultarPorNumeroCuenta(numeroCuenta));
+    @PostMapping("/consultar")
+    @Operation(summary = "Consultar cuentas con paginación y filtros", description = "Único endpoint para consultar cuentas por clienteId o estatus con paginación mediante RequestBody")
+    public ResponseEntity<PaginaResponse<CuentaResponse>> consultarCuentas(@Valid @RequestBody ConsultaCuentaRequest request) {
+        Page<CuentaResponse> pagina = cuentaService.listarCuentasPaginadas(request);
+        return ResponseEntity.ok(PaginaResponse.from(pagina));
     }
 
-    @GetMapping("/{numeroCuenta}/saldo")
-    @Operation(summary = "Consultar saldo de una cuenta", description = "Obtiene el saldo disponible y estatus de una cuenta")
-    public ResponseEntity<SaldoResponse> consultarSaldo(@PathVariable String numeroCuenta) {
-        return ResponseEntity.ok(cuentaService.consultarSaldo(numeroCuenta));
+    @PostMapping("/detalle")
+    @Operation(summary = "Consultar detalle de una cuenta", description = "Obtiene los detalles de la cuenta enviando el número de cuenta en RequestBody")
+    public ResponseEntity<CuentaResponse> consultarPorNumeroCuenta(@Valid @RequestBody DetalleCuentaRequest request) {
+        return ResponseEntity.ok(cuentaService.obtenerCuentaDetalle(request));
     }
 
-    @GetMapping
-    @Operation(summary = "Consultar cuentas por cliente o estatus", description = "Permite filtrar cuentas por clienteId o estatus (ej. ACTIVA)")
-    public ResponseEntity<List<CuentaResponse>> consultarCuentas(
-            @Parameter(description = "ID del cliente titular")
-            @RequestParam(required = false) Long clienteId,
-
-            @Parameter(description = "Estatus de la cuenta (ej. ACTIVA, INACTIVA)")
-            @RequestParam(required = false) String estatus
-    ) {
-        if (clienteId != null) {
-            return ResponseEntity.ok(cuentaService.consultarPorClienteId(clienteId));
-        }
-        if (estatus != null && !estatus.trim().isEmpty()) {
-            return ResponseEntity.ok(cuentaService.consultarPorEstatus(estatus));
-        }
-        return ResponseEntity.ok(cuentaService.consultarCuentasActivas());
+    @PostMapping("/saldo")
+    @Operation(summary = "Consultar saldo de una cuenta", description = "Obtiene el saldo disponible y estatus de una cuenta mediante RequestBody")
+    public ResponseEntity<SaldoResponse> consultarSaldo(@Valid @RequestBody DetalleCuentaRequest request) {
+        return ResponseEntity.ok(cuentaService.obtenerSaldoDetalle(request));
     }
 
-    @PatchMapping("/{numeroCuenta}")
-    @Operation(summary = "Actualizar parcialmente la información de una cuenta (PATCH)", description = "Permite modificar estatus o saldo. Bloquea modificación del número de cuenta.")
-    public ResponseEntity<CuentaResponse> actualizarParcialPatch(
-            @PathVariable String numeroCuenta,
-            @Valid @RequestBody CuentaUpdateRequest request
-    ) {
-        return ResponseEntity.ok(cuentaService.actualizarParcial(numeroCuenta, request));
-    }
-
-    @PutMapping("/{numeroCuenta}")
-    @Operation(summary = "Actualizar información de una cuenta (PUT)", description = "Permite modificar información de la cuenta protegiendo el número de cuenta")
-    public ResponseEntity<CuentaResponse> actualizarParcialPut(
-            @PathVariable String numeroCuenta,
-            @Valid @RequestBody CuentaUpdateRequest request
-    ) {
-        return ResponseEntity.ok(cuentaService.actualizarParcial(numeroCuenta, request));
+    @PutMapping("/actualizar")
+    @Operation(summary = "Actualizar información de una cuenta", description = "Modifica estatus o saldo de una cuenta mediante RequestBody")
+    public ResponseEntity<CuentaResponse> actualizarCuenta(@Valid @RequestBody CuentaUpdateRequest request) {
+        return ResponseEntity.ok(cuentaService.actualizarCuentaParcial(request));
     }
 }

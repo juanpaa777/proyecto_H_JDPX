@@ -16,14 +16,14 @@ import org.springframework.web.bind.annotation.RestController;
 @RestController
 @RequestMapping("/auth")
 @RequiredArgsConstructor
-@Tag(name = "Autenticación", description = "Endpoints de autenticación y generación de tokens de seguridad JWT")
+@Tag(name = "Autenticación", description = "Endpoints de autenticación y generación de tokens de seguridad")
 public class AuthController {
 
     private final AuthService authService;
 
     @PostMapping("/login")
-    @Operation(summary = "Inicio de sesión (Login)", description = "Valida correo, contraseña con BCrypt, comprueba usuario activo y genera token JWT")
+    @Operation(summary = "Inicio de sesión (Login)", description = "Valida correo, contraseña con BCrypt, comprueba usuario activo y genera token")
     public ResponseEntity<LoginResponse> login(@Valid @RequestBody LoginRequest request) {
-        return ResponseEntity.ok(authService.login(request));
+        return ResponseEntity.ok(authService.autenticarUsuario(request));
     }
 }

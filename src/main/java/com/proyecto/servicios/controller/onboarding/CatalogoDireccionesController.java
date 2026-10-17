@@ -1,11 +1,14 @@
 package com.proyecto.servicios.controller.onboarding;
 
+import com.proyecto.servicios.dto.onboarding.CodigoPostalRequest;
 import com.proyecto.servicios.dto.onboarding.CodigoPostalResponse;
+import com.proyecto.servicios.dto.onboarding.ColoniaRequest;
+import com.proyecto.servicios.dto.onboarding.MunicipioRequest;
 import com.proyecto.servicios.entity.onboarding.CatalogoSepomex;
 import com.proyecto.servicios.service.onboarding.CatalogoDireccionesService;
 import io.swagger.v3.oas.annotations.Operation;
-import io.swagger.v3.oas.annotations.Parameter;
 import io.swagger.v3.oas.annotations.tags.Tag;
+import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
@@ -15,25 +18,21 @@ import java.util.List;
 @RestController
 @RequestMapping("/catalogos/domicilios")
 @RequiredArgsConstructor
-@Tag(name = "Catálogos de Domicilios", description = "Endpoints para consulta, autocompletado y sincronización de direcciones desde API externa hacia la Base de Datos")
+@Tag(name = "Catálogos de Domicilios", description = "Endpoints para consulta y sincronización de direcciones sin PathVariable ni RequestParam (100% RequestBody)")
 public class CatalogoDireccionesController {
 
     private final CatalogoDireccionesService catalogoDireccionesService;
 
-    @GetMapping("/cp/{codigoPostal}")
+    @PostMapping("/cp")
     @Operation(summary = "Consultar información completa por Código Postal", description = "Devuelve el Estado, Municipio, Ciudad y lista de Colonias. Si no existe en la base de datos local, lo sincroniza automáticamente desde la API externa.")
-    public ResponseEntity<CodigoPostalResponse> consultarPorCodigoPostal(
-            @Parameter(description = "Código postal de 5 dígitos", example = "37800")
-            @PathVariable String codigoPostal) {
-        return ResponseEntity.ok(catalogoDireccionesService.consultarPorCodigoPostal(codigoPostal));
+    public ResponseEntity<CodigoPostalResponse> consultarPorCodigoPostal(@Valid @RequestBody CodigoPostalRequest request) {
+        return ResponseEntity.ok(catalogoDireccionesService.consultarPorCodigoPostal(request.getCodigoPostal()));
     }
 
-    @PostMapping("/sincronizar/{codigoPostal}")
+    @PostMapping("/sincronizar")
     @Operation(summary = "Sincronizar código postal desde la API externa a la Base de Datos", description = "Fuerza la petición a la API externa de Códigos Postales y persiste los registros en la base de datos local.")
-    public ResponseEntity<List<CatalogoSepomex>> sincronizarCodigoPostal(
-            @Parameter(description = "Código postal de 5 dígitos", example = "37800")
-            @PathVariable String codigoPostal) {
-        List<CatalogoSepomex> registros = catalogoDireccionesService.sincronizarDesdeApi(codigoPostal);
+    public ResponseEntity<List<CatalogoSepomex>> sincronizarCodigoPostal(@Valid @RequestBody CodigoPostalRequest request) {
+        List<CatalogoSepomex> registros = catalogoDireccionesService.sincronizarDesdeApi(request.getCodigoPostal());
         return ResponseEntity.ok(registros);
     }
 
@@ -43,19 +42,15 @@ public class CatalogoDireccionesController {
         return ResponseEntity.ok(catalogoDireccionesService.obtenerEstados());
     }
 
-    @GetMapping("/municipios")
-    @Operation(summary = "Listar Municipios por Estado", description = "Devuelve los municipios pertenecientes al estado especificado.")
-    public ResponseEntity<List<String>> obtenerMunicipios(
-            @Parameter(description = "Nombre del estado", example = "Guanajuato")
-            @RequestParam String estado) {
-        return ResponseEntity.ok(catalogoDireccionesService.obtenerMunicipiosPorEstado(estado));
+    @PostMapping("/municipios")
+    @Operation(summary = "Listar Municipios por Estado", description = "Devuelve los municipios pertenecientes al estado especificado en RequestBody.")
+    public ResponseEntity<List<String>> obtenerMunicipios(@Valid @RequestBody MunicipioRequest request) {
+        return ResponseEntity.ok(catalogoDireccionesService.obtenerMunicipiosPorEstado(request.getEstado()));
     }
 
-    @GetMapping("/colonias")
-    @Operation(summary = "Listar Colonias por Código Postal", description = "Devuelve únicamente el listado de nombres de colonias para un código postal.")
-    public ResponseEntity<List<String>> obtenerColonias(
-            @Parameter(description = "Código postal de 5 dígitos", example = "37800")
-            @RequestParam String cp) {
-        return ResponseEntity.ok(catalogoDireccionesService.obtenerColoniasPorCodigoPostal(cp));
+    @PostMapping("/colonias")
+    @Operation(summary = "Listar Colonias por Código Postal", description = "Devuelve el listado de colonias para un código postal enviado en RequestBody.")
+    public ResponseEntity<List<String>> obtenerColonias(@Valid @RequestBody ColoniaRequest request) {
+        return ResponseEntity.ok(catalogoDireccionesService.obtenerColoniasPorCodigoPostal(request.getCp()));
     }
 }
