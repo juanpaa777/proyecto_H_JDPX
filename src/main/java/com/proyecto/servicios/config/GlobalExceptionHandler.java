@@ -19,35 +19,28 @@ import java.util.Map;
 @Slf4j
 public class GlobalExceptionHandler {
 
+    /**
+     * En caso de que alguna validación Bean Validation (@Valid) no se cumpla para algún DTO,
+     * se dispara MethodArgumentNotValidException. Este método procesa los errores de cada campo
+     * devolviendo una respuesta uniforme con código y descripción detallada.
+     */
     @ExceptionHandler(MethodArgumentNotValidException.class)
-    public ResponseEntity<GenericResponse> handleValidationExceptions(MethodArgumentNotValidException ex) {
-        Map<String, String> errors = new HashMap<>();
-        for (FieldError error : ex.getBindingResult().getFieldErrors()) {
-            errors.put(error.getField(), error.getDefaultMessage());
+    public ResponseEntity<GenericResponse> dtoValidation(MethodArgumentNotValidException ex) {
+        GenericResponse genericResponse = new GenericResponse();
+        Map<String, String> listError = new HashMap<>();
+        for (FieldError fieldError : ex.getBindingResult().getFieldErrors()) {
+            listError.put(fieldError.getField(), fieldError.getDefaultMessage());
         }
-        GenericResponse response = new GenericResponse(
-                HttpStatus.BAD_REQUEST.value(),
-                "Error en las validaciones de los campos enviados.",
-                errors
-        );
-        return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(response);
+        genericResponse.setCodigo(1);
+        genericResponse.setMensaje("Datos no validos: " + listError);
+        genericResponse.setDetalles(listError);
+        return new ResponseEntity<>(genericResponse, HttpStatus.BAD_REQUEST);
     }
 
     @ExceptionHandler({
-            CurpDuplicadaException.class,
-            RfcDuplicadoException.class,
-            CorreoDuplicadoException.class
-    })
-    public ResponseEntity<GenericResponse> handleDuplicateResourceException(RuntimeException ex) {
-        log.warn("Conflicto por duplicidad: {}", ex.getMessage());
-        GenericResponse response = new GenericResponse(HttpStatus.CONFLICT.value(), ex.getMessage());
-        return ResponseEntity.status(HttpStatus.CONFLICT).body(response);
-    }
-
-    @ExceptionHandler({
+            UsuarioNoEncontradoException.class,
             ClienteNoEncontradoException.class,
-            CuentaNoEncontradaException.class,
-            UsuarioNoEncontradoException.class
+            CuentaNoEncontradaException.class
     })
     public ResponseEntity<GenericResponse> handleNotFoundResourceException(RuntimeException ex) {
         log.warn("Recurso no encontrado: {}", ex.getMessage());
@@ -55,24 +48,35 @@ public class GlobalExceptionHandler {
         return ResponseEntity.status(HttpStatus.NOT_FOUND).body(response);
     }
 
-    @ExceptionHandler(CredencialesInvalidasException.class)
-    public ResponseEntity<GenericResponse> handleInvalidCredentials(CredencialesInvalidasException ex) {
-        log.warn("Acceso denegado: {}", ex.getMessage());
-        GenericResponse response = new GenericResponse(HttpStatus.UNAUTHORIZED.value(), ex.getMessage());
-        return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body(response);
+    @ExceptionHandler({
+            CorreoDuplicadoException.class,
+            CurpDuplicadaException.class,
+            RfcDuplicadoException.class
+    })
+    public ResponseEntity<GenericResponse> handleDuplicateResourceException(RuntimeException ex) {
+        log.warn("Conflicto de unicidad: {}", ex.getMessage());
+        GenericResponse response = new GenericResponse(HttpStatus.CONFLICT.value(), ex.getMessage());
+        return ResponseEntity.status(HttpStatus.CONFLICT).body(response);
     }
 
     @ExceptionHandler(UsuarioInactivoException.class)
     public ResponseEntity<GenericResponse> handleInactiveUser(UsuarioInactivoException ex) {
-        log.warn("Usuario inactivo: {}", ex.getMessage());
+        log.warn("Acceso restringido por estatus inactivo: {}", ex.getMessage());
         GenericResponse response = new GenericResponse(HttpStatus.FORBIDDEN.value(), ex.getMessage());
         return ResponseEntity.status(HttpStatus.FORBIDDEN).body(response);
     }
 
+    @ExceptionHandler(CredencialesInvalidasException.class)
+    public ResponseEntity<GenericResponse> handleInvalidCredentials(CredencialesInvalidasException ex) {
+        log.warn("Fallo de autenticación: {}", ex.getMessage());
+        GenericResponse response = new GenericResponse(HttpStatus.UNAUTHORIZED.value(), ex.getMessage());
+        return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body(response);
+    }
+
     @ExceptionHandler({
-            ContrasenaInvalidaException.class,
             ModificacionNoPermitidaException.class,
-            ValidacionNegocioException.class
+            ValidacionNegocioException.class,
+            ContrasenaInvalidaException.class
     })
     public ResponseEntity<GenericResponse> handleBadRequestBusinessExceptions(RuntimeException ex) {
         log.warn("Regla de negocio no cumplida: {}", ex.getMessage());
@@ -89,22 +93,30 @@ public class GlobalExceptionHandler {
         return ResponseEntity.status(HttpStatus.NOT_FOUND).body(response);
     }
 
+    /**
+     * Manejo de excepciones de acceso a datos (JPA / SQL / Hibernate).
+     * Se protege al cliente no devolviendo trazas técnicas, consultas SQL ni detalles internos.
+     */
     @ExceptionHandler(DataAccessException.class)
     public ResponseEntity<GenericResponse> handleDatabaseException(DataAccessException ex) {
-        log.error("Error de acceso a base de datos: {}", ex.getMessage());
+        log.error("Excepción de persistencia capturada en servidor: {}", ex.getMessage());
         GenericResponse response = new GenericResponse(
                 HttpStatus.SERVICE_UNAVAILABLE.value(),
-                "El servicio de base de datos no está disponible en este momento. Verifique la conexión."
+                "No fue posible completar la operación en la base de datos. Intente más tarde."
         );
         return ResponseEntity.status(HttpStatus.SERVICE_UNAVAILABLE).body(response);
     }
 
+    /**
+     * Manejo centralizado de excepciones no controladas.
+     * Nunca devuelve trazas técnicas ni volcados de pila al cliente.
+     */
     @ExceptionHandler(Exception.class)
     public ResponseEntity<GenericResponse> handleGeneralException(Exception ex) {
-        log.error("Error no controlado en la aplicación: {}", ex.getMessage(), ex);
+        log.error("Error no controlado capturado en el servidor: {}", ex.getMessage(), ex);
         GenericResponse response = new GenericResponse(
                 HttpStatus.INTERNAL_SERVER_ERROR.value(),
-                "Ocurrió un error inesperado al procesar la solicitud: " + ex.getMessage()
+                "Ocurrió un error inesperado al procesar la solicitud. Contacte a soporte si el problema persiste."
         );
         return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(response);
     }
