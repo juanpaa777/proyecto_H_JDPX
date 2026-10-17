@@ -1,12 +1,8 @@
 package com.proyecto.servicios.service.onboarding;
 
-import com.proyecto.servicios.dto.onboarding.ClienteResponse;
-import com.proyecto.servicios.dto.onboarding.ClienteUpdateRequest;
-import com.proyecto.servicios.dto.onboarding.DomicilioDto;
+import com.proyecto.servicios.dto.onboarding.*;
 import com.proyecto.servicios.entity.onboarding.Cliente;
-import com.proyecto.servicios.entity.onboarding.Cuenta;
 import com.proyecto.servicios.entity.onboarding.Domicilio;
-import com.proyecto.servicios.entity.onboarding.Usuario;
 import com.proyecto.servicios.exception.onboarding.ClienteNoEncontradoException;
 import com.proyecto.servicios.exception.onboarding.CorreoDuplicadoException;
 import com.proyecto.servicios.exception.onboarding.ModificacionNoPermitidaException;
@@ -15,16 +11,21 @@ import com.proyecto.servicios.mapper.onboarding.ClienteMapper;
 import com.proyecto.servicios.repositorys.onboarding.ClienteRepository;
 import com.proyecto.servicios.repositorys.onboarding.CuentaRepository;
 import com.proyecto.servicios.repositorys.onboarding.UsuarioRepository;
+import com.proyecto.servicios.repositorys.onboarding.specification.ClienteSpecification;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.PageRequest;
+import org.springframework.data.domain.Pageable;
+import org.springframework.data.domain.Sort;
+import org.springframework.data.jpa.domain.Specification;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDate;
-import java.time.LocalDateTime;
 import java.time.Period;
-import java.util.List;
-import java.util.stream.Collectors;
+import java.util.Optional;
+import java.util.function.Predicate;
 
 @Service
 @RequiredArgsConstructor
@@ -36,218 +37,226 @@ public class ClienteService {
     private final UsuarioRepository usuarioRepository;
 
     @Transactional(readOnly = true)
-    public List<ClienteResponse> consultarTodos() {
-        return clienteRepository.findAll().stream()
-                .map(ClienteMapper::toResponse)
-                .collect(Collectors.toList());
+    public Page<ClienteResponse> buscarClientesPaginados(ConsultaClienteRequest request) {
+        int page = Optional.ofNullable(request.getPage()).orElse(0);
+        int size = Optional.ofNullable(request.getSize()).orElse(10);
+        Pageable pageable = PageRequest.of(page, size, Sort.by(Sort.Direction.DESC, "id"));
+
+        Specification<Cliente> spec = ClienteSpecification.conFiltros(request);
+        return clienteRepository.findAll(spec, pageable).map(ClienteMapper::toResponse);
     }
 
     @Transactional(readOnly = true)
-    public ClienteResponse consultarPorId(Long id) {
-        Cliente cliente = clienteRepository.findById(id)
+    public ClienteResponse obtenerClienteDetalle(DetalleClienteRequest request) {
+        return Optional.ofNullable(request.getId())
+                .map(this::obtenerClientePorId)
+                .or(() -> Optional.ofNullable(request.getCurp())
+                        .filter(Predicate.not(String::isBlank))
+                        .map(this::obtenerClientePorCurp))
+                .or(() -> Optional.ofNullable(request.getRfc())
+                        .filter(Predicate.not(String::isBlank))
+                        .map(this::obtenerClientePorRfc))
+                .or(() -> Optional.ofNullable(request.getNumeroCuenta())
+                        .filter(Predicate.not(String::isBlank))
+                        .map(this::obtenerClientePorNumeroCuenta))
+                .orElseThrow(() -> new ValidacionNegocioException("Debe especificar id, curp, rfc o numeroCuenta para consultar el detalle"));
+    }
+
+    @Transactional(readOnly = true)
+    public ClienteResponse obtenerClientePorId(Long id) {
+        return clienteRepository.findById(id)
+                .map(ClienteMapper::toResponse)
                 .orElseThrow(() -> new ClienteNoEncontradoException(id));
-        return ClienteMapper.toResponse(cliente);
     }
 
     @Transactional(readOnly = true)
-    public ClienteResponse consultarPorCurp(String curp) {
-        Cliente cliente = clienteRepository.findByCurp(curp.trim().toUpperCase())
-                .orElseThrow(() -> new ClienteNoEncontradoException("No se encontró ningún cliente con la CURP: " + curp));
-        return ClienteMapper.toResponse(cliente);
-    }
-
-    @Transactional(readOnly = true)
-    public ClienteResponse consultarPorRfc(String rfc) {
-        Cliente cliente = clienteRepository.findByRfc(rfc.trim().toUpperCase())
-                .orElseThrow(() -> new ClienteNoEncontradoException("No se encontró ningún cliente con el RFC: " + rfc));
-        return ClienteMapper.toResponse(cliente);
-    }
-
-    @Transactional(readOnly = true)
-    public ClienteResponse consultarPorCorreo(String correo) {
-        Cliente cliente = clienteRepository.findByCorreo(correo.trim().toLowerCase())
-                .orElseThrow(() -> new ClienteNoEncontradoException("No se encontró ningún cliente con el correo: " + correo));
-        return ClienteMapper.toResponse(cliente);
-    }
-
-    @Transactional(readOnly = true)
-    public ClienteResponse consultarPorNumeroCuenta(String numeroCuenta) {
-        Cliente cliente = clienteRepository.findByNumeroCuenta(numeroCuenta.trim())
-                .orElseThrow(() -> new ClienteNoEncontradoException("No se encontró ningún cliente titular de la cuenta: " + numeroCuenta));
-        return ClienteMapper.toResponse(cliente);
-    }
-
-    @Transactional(readOnly = true)
-    public List<ClienteResponse> buscarPorNombre(String nombre) {
-        return clienteRepository.findByNombreContainingIgnoreCase(nombre).stream()
+    public ClienteResponse obtenerClientePorCurp(String curp) {
+        return clienteRepository.findByCurp(curp.trim().toUpperCase())
                 .map(ClienteMapper::toResponse)
-                .collect(Collectors.toList());
+                .orElseThrow(() -> new ClienteNoEncontradoException("No se encontró ningún cliente con la CURP: " + curp));
     }
 
     @Transactional(readOnly = true)
-    public List<ClienteResponse> buscarPorApellidoPaterno(String apellidoPaterno) {
-        return clienteRepository.findByApellidoPaternoContainingIgnoreCase(apellidoPaterno).stream()
-                .map(com.proyecto.servicios.mapper.onboarding.ClienteMapper::toResponse)
-                .collect(Collectors.toList());
+    public ClienteResponse obtenerClientePorRfc(String rfc) {
+        return clienteRepository.findByRfc(rfc.trim().toUpperCase())
+                .map(ClienteMapper::toResponse)
+                .orElseThrow(() -> new ClienteNoEncontradoException("No se encontró ningún cliente con el RFC: " + rfc));
     }
 
     @Transactional(readOnly = true)
-    public List<ClienteResponse> buscarPorApellidoMaterno(String apellidoMaterno) {
-        return clienteRepository.findByApellidoMaternoContainingIgnoreCase(apellidoMaterno).stream()
-                .map(com.proyecto.servicios.mapper.onboarding.ClienteMapper::toResponse)
-                .collect(Collectors.toList());
+    public ClienteResponse obtenerClientePorCorreo(String correo) {
+        return clienteRepository.findByCorreo(correo.trim().toLowerCase())
+                .map(ClienteMapper::toResponse)
+                .orElseThrow(() -> new ClienteNoEncontradoException("No se encontró ningún cliente con el correo: " + correo));
     }
 
     @Transactional(readOnly = true)
-    public List<ClienteResponse> consultarActivos() {
-        return clienteRepository.findByActivoTrue().stream()
-                .map(com.proyecto.servicios.mapper.onboarding.ClienteMapper::toResponse)
-                .collect(Collectors.toList());
-    }
-
-    @Transactional(readOnly = true)
-    public List<ClienteResponse> consultarPorRangoFechas(LocalDateTime inicio, LocalDateTime fin) {
-        return clienteRepository.findByFechaCreacionBetween(inicio, fin).stream()
-                .map(com.proyecto.servicios.mapper.onboarding.ClienteMapper::toResponse)
-                .collect(Collectors.toList());
+    public ClienteResponse obtenerClientePorNumeroCuenta(String numeroCuenta) {
+        return clienteRepository.findByNumeroCuenta(numeroCuenta.trim())
+                .map(ClienteMapper::toResponse)
+                .orElseThrow(() -> new ClienteNoEncontradoException("No se encontró ningún cliente titular de la cuenta: " + numeroCuenta));
     }
 
     /**
-     * Actualización parcial de información.
-     * Regla de negocio estricta: NO se permite modificar CURP, RFC ni Número de cuenta.
+     * Actualización parcial de información utilizando exclusivamente programación funcional.
+     * Cero sentencias if, validaciones de inmutabilidad y reglas de negocio declarativas.
      */
     @Transactional(rollbackFor = Exception.class)
-    public ClienteResponse actualizarParcial(Long id, ClienteUpdateRequest request) {
-        Cliente cliente = clienteRepository.findById(id)
-                .orElseThrow(() -> new ClienteNoEncontradoException(id));
+    public ClienteResponse actualizarClienteParcial(ClienteUpdateRequest request) {
+        Cliente cliente = clienteRepository.findById(request.getId())
+                .orElseThrow(() -> new ClienteNoEncontradoException(request.getId()));
 
-        // 1. Validar reglas de inmutabilidad
-        if (request.getCurp() != null && !request.getCurp().trim().equalsIgnoreCase(cliente.getCurp())) {
-            throw new ModificacionNoPermitidaException("No está permitido modificar la CURP de un cliente ya registrado");
-        }
+        // 1. Validar reglas de inmutabilidad (Cero IF)
+        Optional.ofNullable(request.getCurp())
+                .map(String::trim)
+                .filter(Predicate.not(String::isEmpty))
+                .filter(c -> !c.equalsIgnoreCase(cliente.getCurp()))
+                .ifPresent(c -> { throw new ModificacionNoPermitidaException("No está permitido modificar la CURP de un cliente ya registrado"); });
 
-        if (request.getRfc() != null && !request.getRfc().trim().equalsIgnoreCase(cliente.getRfc())) {
-            throw new ModificacionNoPermitidaException("No está permitido modificar el RFC de un cliente ya registrado");
-        }
+        Optional.ofNullable(request.getRfc())
+                .map(String::trim)
+                .filter(Predicate.not(String::isEmpty))
+                .filter(r -> !r.equalsIgnoreCase(cliente.getRfc()))
+                .ifPresent(r -> { throw new ModificacionNoPermitidaException("No está permitido modificar el RFC de un cliente ya registrado"); });
 
-        if (request.getNumeroCuenta() != null && !request.getNumeroCuenta().trim().isEmpty()) {
-            throw new ModificacionNoPermitidaException("No está permitido modificar el número de cuenta bancaria");
-        }
+        Optional.ofNullable(request.getNumeroCuenta())
+                .map(String::trim)
+                .filter(Predicate.not(String::isEmpty))
+                .ifPresent(nc -> { throw new ModificacionNoPermitidaException("No está permitido modificar el número de cuenta bancaria"); });
 
         // 2. Modificaciones personales permitidas
-        if (request.getNombre() != null && !request.getNombre().trim().isEmpty()) {
-            cliente.setNombre(request.getNombre().trim());
-        }
-        if (request.getSegundoNombre() != null) {
-            cliente.setSegundoNombre(request.getSegundoNombre().trim().isEmpty() ? null : request.getSegundoNombre().trim());
-        }
-        if (request.getApellidoPaterno() != null && !request.getApellidoPaterno().trim().isEmpty()) {
-            cliente.setApellidoPaterno(request.getApellidoPaterno().trim());
-        }
-        if (request.getApellidoMaterno() != null && !request.getApellidoMaterno().trim().isEmpty()) {
-            cliente.setApellidoMaterno(request.getApellidoMaterno().trim());
-        }
-        if (request.getFechaNacimiento() != null) {
-            LocalDate hoy = LocalDate.now();
-            if (request.getFechaNacimiento().isAfter(hoy) || Period.between(request.getFechaNacimiento(), hoy).getYears() < 18) {
-                throw new ValidacionNegocioException("La fecha de nacimiento modificada debe cumplir con la mayoría de edad (18 años o más)");
-            }
-            cliente.setFechaNacimiento(request.getFechaNacimiento());
-        }
-        if (request.getSexo() != null && !request.getSexo().trim().isEmpty()) {
-            cliente.setSexo(request.getSexo().trim().toUpperCase());
-        }
-        if (request.getNacionalidad() != null && !request.getNacionalidad().trim().isEmpty()) {
-            cliente.setNacionalidad(request.getNacionalidad().trim());
-        }
-        if (request.getEstadoCivil() != null && !request.getEstadoCivil().trim().isEmpty()) {
-            cliente.setEstadoCivil(request.getEstadoCivil().trim());
-        }
+        Optional.ofNullable(request.getNombre())
+                .map(String::trim)
+                .filter(Predicate.not(String::isEmpty))
+                .ifPresent(cliente::setNombre);
 
-        // 3. Modificaciones de contacto
-        if (request.getCorreo() != null && !request.getCorreo().trim().isEmpty()) {
-            String nuevoCorreo = request.getCorreo().trim().toLowerCase();
-            if (!nuevoCorreo.equalsIgnoreCase(cliente.getCorreo())) {
-                if (clienteRepository.existsByCorreo(nuevoCorreo) || usuarioRepository.existsByCorreo(nuevoCorreo)) {
-                    throw new CorreoDuplicadoException(nuevoCorreo);
-                }
-                cliente.setCorreo(nuevoCorreo);
-                // Si tiene usuario asociado, actualizar su login (correo)
-                if (cliente.getUsuario() != null) {
-                    cliente.getUsuario().setCorreo(nuevoCorreo);
-                }
-            }
-        }
-        if (request.getTelefonoMovil() != null && !request.getTelefonoMovil().trim().isEmpty()) {
-            cliente.setTelefonoMovil(request.getTelefonoMovil().trim());
-        }
-        if (request.getTelefonoAlternativo() != null) {
-            cliente.setTelefonoAlternativo(request.getTelefonoAlternativo().trim().isEmpty() ? null : request.getTelefonoAlternativo().trim());
-        }
+        Optional.ofNullable(request.getSegundoNombre())
+                .map(String::trim)
+                .map(s -> s.isEmpty() ? null : s)
+                .ifPresent(cliente::setSegundoNombre);
+
+        Optional.ofNullable(request.getApellidoPaterno())
+                .map(String::trim)
+                .filter(Predicate.not(String::isEmpty))
+                .ifPresent(cliente::setApellidoPaterno);
+
+        Optional.ofNullable(request.getApellidoMaterno())
+                .map(String::trim)
+                .filter(Predicate.not(String::isEmpty))
+                .ifPresent(cliente::setApellidoMaterno);
+
+        // Validación de mayoría de edad sin IF
+        Optional.ofNullable(request.getFechaNacimiento())
+                .filter(f -> f.isAfter(LocalDate.now()) || Period.between(f, LocalDate.now()).getYears() < 18)
+                .ifPresent(f -> { throw new ValidacionNegocioException("La fecha de nacimiento modificada debe cumplir con la mayoría de edad (18 años o más)"); });
+
+        Optional.ofNullable(request.getFechaNacimiento())
+                .ifPresent(cliente::setFechaNacimiento);
+
+        Optional.ofNullable(request.getSexo())
+                .map(String::trim)
+                .filter(Predicate.not(String::isEmpty))
+                .map(String::toUpperCase)
+                .ifPresent(cliente::setSexo);
+
+        Optional.ofNullable(request.getNacionalidad())
+                .map(String::trim)
+                .filter(Predicate.not(String::isEmpty))
+                .ifPresent(cliente::setNacionalidad);
+
+        Optional.ofNullable(request.getEstadoCivil())
+                .map(String::trim)
+                .filter(Predicate.not(String::isEmpty))
+                .ifPresent(cliente::setEstadoCivil);
+
+        // 3. Modificaciones de contacto y unicidad de correo
+        Optional.ofNullable(request.getCorreo())
+                .map(String::trim)
+                .filter(Predicate.not(String::isEmpty))
+                .map(String::toLowerCase)
+                .filter(nuevoCorreo -> !nuevoCorreo.equalsIgnoreCase(cliente.getCorreo()))
+                .ifPresent(nuevoCorreo -> {
+                    Optional.of(nuevoCorreo)
+                            .filter(c -> clienteRepository.existsByCorreo(c) || usuarioRepository.existsByCorreo(c))
+                            .ifPresent(c -> { throw new CorreoDuplicadoException(c); });
+
+                    cliente.setCorreo(nuevoCorreo);
+                    Optional.ofNullable(cliente.getUsuario()).ifPresent(u -> u.setCorreo(nuevoCorreo));
+                });
+
+        Optional.ofNullable(request.getTelefonoMovil())
+                .map(String::trim)
+                .filter(Predicate.not(String::isEmpty))
+                .ifPresent(cliente::setTelefonoMovil);
+
+        Optional.ofNullable(request.getTelefonoAlternativo())
+                .map(String::trim)
+                .map(t -> t.isEmpty() ? null : t)
+                .ifPresent(cliente::setTelefonoAlternativo);
 
         // 4. Modificaciones laborales
-        if (request.getOcupacion() != null && !request.getOcupacion().trim().isEmpty()) {
-            cliente.setOcupacion(request.getOcupacion().trim());
-        }
-        if (request.getEmpresa() != null && !request.getEmpresa().trim().isEmpty()) {
-            cliente.setEmpresa(request.getEmpresa().trim());
-        }
-        if (request.getIngresoMensual() != null) {
-            cliente.setIngresoMensual(request.getIngresoMensual());
-        }
+        Optional.ofNullable(request.getOcupacion())
+                .map(String::trim)
+                .filter(Predicate.not(String::isEmpty))
+                .ifPresent(cliente::setOcupacion);
+
+        Optional.ofNullable(request.getEmpresa())
+                .map(String::trim)
+                .filter(Predicate.not(String::isEmpty))
+                .ifPresent(cliente::setEmpresa);
+
+        Optional.ofNullable(request.getIngresoMensual())
+                .ifPresent(cliente::setIngresoMensual);
 
         // 5. Modificaciones de domicilio
-        if (request.getDomicilio() != null) {
-            DomicilioDto domDto = request.getDomicilio();
-            Domicilio dom = cliente.getDomicilio();
-            if (dom == null) {
-                dom = new Domicilio();
-                dom.setCliente(cliente);
-                cliente.setDomicilio(dom);
-            }
-            if (domDto.getCalle() != null) dom.setCalle(domDto.getCalle().trim());
-            if (domDto.getNumeroExterior() != null) dom.setNumeroExterior(domDto.getNumeroExterior().trim());
-            if (domDto.getNumeroInterior() != null) dom.setNumeroInterior(domDto.getNumeroInterior().trim());
-            if (domDto.getColonia() != null) dom.setColonia(domDto.getColonia().trim());
-            if (domDto.getMunicipio() != null) dom.setMunicipio(domDto.getMunicipio().trim());
-            if (domDto.getEstado() != null) dom.setEstado(domDto.getEstado().trim());
-            if (domDto.getCodigoPostal() != null) dom.setCodigoPostal(domDto.getCodigoPostal().trim());
-            if (domDto.getPais() != null) dom.setPais(domDto.getPais().trim());
-        }
+        Optional.ofNullable(request.getDomicilio()).ifPresent(domDto -> {
+            Domicilio dom = Optional.ofNullable(cliente.getDomicilio()).orElseGet(() -> {
+                Domicilio nuevo = new Domicilio();
+                nuevo.setCliente(cliente);
+                cliente.setDomicilio(nuevo);
+                return nuevo;
+            });
 
-        cliente = clienteRepository.save(cliente);
-        log.info("Cliente ID: {} actualizado satisfactoriamente", cliente.getId());
-        return com.proyecto.servicios.mapper.onboarding.ClienteMapper.toResponse(cliente);
+            Optional.ofNullable(domDto.getCalle()).map(String::trim).ifPresent(dom::setCalle);
+            Optional.ofNullable(domDto.getNumeroExterior()).map(String::trim).ifPresent(dom::setNumeroExterior);
+            Optional.ofNullable(domDto.getNumeroInterior()).map(String::trim).ifPresent(dom::setNumeroInterior);
+            Optional.ofNullable(domDto.getColonia()).map(String::trim).ifPresent(dom::setColonia);
+            Optional.ofNullable(domDto.getMunicipio()).map(String::trim).ifPresent(dom::setMunicipio);
+            Optional.ofNullable(domDto.getEstado()).map(String::trim).ifPresent(dom::setEstado);
+            Optional.ofNullable(domDto.getCodigoPostal()).map(String::trim).ifPresent(dom::setCodigoPostal);
+            Optional.ofNullable(domDto.getPais()).map(String::trim).ifPresent(dom::setPais);
+        });
+
+        Cliente clienteGuardado = clienteRepository.save(cliente);
+        log.info("Cliente ID: {} actualizado satisfactoriamente", clienteGuardado.getId());
+        return ClienteMapper.toResponse(clienteGuardado);
     }
 
     /**
-     * Baja lógica del cliente.
-     * Regla: Desactivar cliente sin eliminar físicamente.
-     * Regla en cascada: Su usuario y sus cuentas quedan inactivas automáticamente.
+     * Baja lógica del cliente, cuentas y usuario en cascada mediante DTO en RequestBody.
+     * Cero IF en su ejecución.
      */
     @Transactional(rollbackFor = Exception.class)
-    public ClienteResponse bajaLogica(Long id) {
-        Cliente cliente = clienteRepository.findById(id)
-                .orElseThrow(() -> new ClienteNoEncontradoException(id));
+    public ClienteResponse darDeBajaClienteLogica(EliminaClienteRequest request) {
+        Cliente cliente = clienteRepository.findById(request.getId())
+                .orElseThrow(() -> new ClienteNoEncontradoException(request.getId()));
 
         cliente.setActivo(false);
 
-        // Desactivar usuario asociado
-        if (cliente.getUsuario() != null) {
-            cliente.getUsuario().setActivo(false);
-            usuarioRepository.save(cliente.getUsuario());
-        }
+        Optional.ofNullable(cliente.getUsuario()).ifPresent(u -> {
+            u.setActivo(false);
+            usuarioRepository.save(u);
+        });
 
-        // Desactivar cuentas bancarias asociadas ("Solo los clientes activos podrán tener cuentas activas")
-        if (cliente.getCuentas() != null) {
-            for (Cuenta cuenta : cliente.getCuentas()) {
-                cuenta.setEstatus("INACTIVA");
-                cuentaRepository.save(cuenta);
-            }
-        }
+        Optional.ofNullable(cliente.getCuentas()).ifPresent(cuentas ->
+                cuentas.forEach(cuenta -> {
+                    cuenta.setEstatus("INACTIVA");
+                    cuentaRepository.save(cuenta);
+                })
+        );
 
-        cliente = clienteRepository.save(cliente);
-        log.info("Baja lógica aplicada al cliente ID: {}. Cuentas y usuario desactivados.", id);
-        return com.proyecto.servicios.mapper.onboarding.ClienteMapper.toResponse(cliente);
+        Cliente clienteDesactivado = clienteRepository.save(cliente);
+        log.info("Baja lógica aplicada al cliente ID: {}. Cuentas y usuario desactivados.", request.getId());
+        return ClienteMapper.toResponse(clienteDesactivado);
     }
 }

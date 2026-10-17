@@ -26,6 +26,8 @@ import org.springframework.transaction.annotation.Transactional;
 import java.math.BigDecimal;
 import java.time.LocalDate;
 import java.time.Period;
+import java.util.Optional;
+import java.util.function.Predicate;
 
 @Service
 @RequiredArgsConstructor
@@ -44,20 +46,23 @@ public class OnboardingService {
 
     /**
      * Registro completo e integral de un cliente persona física.
-     * Operación 100% atómica.
+     * Operación 100% atómica y funcional con cero sentencias IF.
      */
     @Transactional(rollbackFor = Exception.class)
-    public ClienteResponse registrarCliente(RegistroClienteRequest request) {
+    public ClienteResponse registrarNuevoCliente(RegistroClienteRequest request) {
         log.info("Iniciando onboarding para cliente con CURP: {}, RFC: {}, Correo: {}",
                 request.getCurp(), request.getRfc(), request.getCorreo());
 
-        // 1. Validaciones de Negocio Obligatorias
+        // 1. Validaciones funcionales sin IF
         validarUnicidadYReglas(request);
 
         // 2. Construir entidad Cliente
         Cliente cliente = new Cliente();
         cliente.setNombre(request.getNombre().trim());
-        cliente.setSegundoNombre(request.getSegundoNombre() != null ? request.getSegundoNombre().trim() : null);
+        cliente.setSegundoNombre(Optional.ofNullable(request.getSegundoNombre())
+                .map(String::trim)
+                .filter(Predicate.not(String::isEmpty))
+                .orElse(null));
         cliente.setApellidoPaterno(request.getApellidoPaterno().trim());
         cliente.setApellidoMaterno(request.getApellidoMaterno().trim());
         cliente.setFechaNacimiento(request.getFechaNacimiento());
@@ -68,8 +73,10 @@ public class OnboardingService {
         cliente.setEstadoCivil(request.getEstadoCivil().trim());
         cliente.setCorreo(request.getCorreo().trim().toLowerCase());
         cliente.setTelefonoMovil(request.getTelefonoMovil().trim());
-        cliente.setTelefonoAlternativo(request.getTelefonoAlternativo() != null && !request.getTelefonoAlternativo().trim().isEmpty()
-                ? request.getTelefonoAlternativo().trim() : null);
+        cliente.setTelefonoAlternativo(Optional.ofNullable(request.getTelefonoAlternativo())
+                .map(String::trim)
+                .filter(Predicate.not(String::isEmpty))
+                .orElse(null));
         cliente.setOcupacion(request.getOcupacion().trim());
         cliente.setEmpresa(request.getEmpresa().trim());
         cliente.setIngresoMensual(request.getIngresoMensual());
@@ -83,24 +90,29 @@ public class OnboardingService {
         domicilio.setCliente(cliente);
         domicilio.setCalle(domDto.getCalle().trim());
         domicilio.setNumeroExterior(domDto.getNumeroExterior().trim());
-        domicilio.setNumeroInterior(domDto.getNumeroInterior() != null ? domDto.getNumeroInterior().trim() : null);
+        domicilio.setNumeroInterior(Optional.ofNullable(domDto.getNumeroInterior())
+                .map(String::trim)
+                .filter(Predicate.not(String::isEmpty))
+                .orElse(null));
         domicilio.setColonia(domDto.getColonia().trim());
         domicilio.setMunicipio(domDto.getMunicipio().trim());
         domicilio.setEstado(domDto.getEstado().trim());
         domicilio.setCodigoPostal(domDto.getCodigoPostal().trim());
-        domicilio.setPais(domDto.getPais() != null ? domDto.getPais().trim() : "México");
+        domicilio.setPais(Optional.ofNullable(domDto.getPais())
+                .map(String::trim)
+                .filter(Predicate.not(String::isEmpty))
+                .orElse("México"));
 
         domicilio = domicilioRepository.save(domicilio);
         cliente.setDomicilio(domicilio);
 
         // 4. Crear Cuenta bancaria automática activa con saldo inicial
-        BigDecimal saldoInicial = (request.getSaldoInicial() != null)
-                ? request.getSaldoInicial()
-                : saldoInicialDefault;
+        BigDecimal saldoInicial = Optional.ofNullable(request.getSaldoInicial())
+                .orElse(saldoInicialDefault);
 
-        if (saldoInicial.compareTo(BigDecimal.ZERO) < 0) {
-            throw new ValidacionNegocioException("El saldo inicial no puede ser negativo");
-        }
+        Optional.of(saldoInicial)
+                .filter(s -> s.compareTo(BigDecimal.ZERO) < 0)
+                .ifPresent(s -> { throw new ValidacionNegocioException("El saldo inicial no puede ser negativo"); });
 
         Cuenta cuenta = new Cuenta();
         cuenta.setCliente(cliente);
@@ -128,29 +140,28 @@ public class OnboardingService {
     }
 
     private void validarUnicidadYReglas(RegistroClienteRequest request) {
-        // Validación de mayoría de edad
-        LocalDate hoy = LocalDate.now();
-        if (request.getFechaNacimiento().isAfter(hoy)) {
-            throw new ValidacionNegocioException("La fecha de nacimiento no puede ser una fecha futura");
-        }
-        if (Period.between(request.getFechaNacimiento(), hoy).getYears() < 18) {
-            throw new ValidacionNegocioException("El cliente debe ser mayor de edad (18 años o más)");
-        }
+        // Validación de mayoría de edad (Cero IF)
+        Optional.ofNullable(request.getFechaNacimiento())
+                .filter(f -> f.isAfter(LocalDate.now()))
+                .ifPresent(f -> { throw new ValidacionNegocioException("La fecha de nacimiento no puede ser una fecha futura"); });
 
-        // Unicidad de CURP
-        if (clienteRepository.existsByCurp(request.getCurp().trim().toUpperCase())) {
-            throw new CurpDuplicadaException(request.getCurp().trim().toUpperCase());
-        }
+        Optional.ofNullable(request.getFechaNacimiento())
+                .filter(f -> Period.between(f, LocalDate.now()).getYears() < 18)
+                .ifPresent(f -> { throw new ValidacionNegocioException("El cliente debe ser mayor de edad (18 años o más)"); });
 
-        // Unicidad de RFC
-        if (clienteRepository.existsByRfc(request.getRfc().trim().toUpperCase())) {
-            throw new RfcDuplicadoException(request.getRfc().trim().toUpperCase());
-        }
+        // Unicidad de CURP (Cero IF)
+        Optional.of(request.getCurp().trim().toUpperCase())
+                .filter(clienteRepository::existsByCurp)
+                .ifPresent(c -> { throw new CurpDuplicadaException(c); });
 
-        // Unicidad de Correo
-        String correoNormalizado = request.getCorreo().trim().toLowerCase();
-        if (clienteRepository.existsByCorreo(correoNormalizado) || usuarioRepository.existsByCorreo(correoNormalizado)) {
-            throw new CorreoDuplicadoException(correoNormalizado);
-        }
+        // Unicidad de RFC (Cero IF)
+        Optional.of(request.getRfc().trim().toUpperCase())
+                .filter(clienteRepository::existsByRfc)
+                .ifPresent(r -> { throw new RfcDuplicadoException(r); });
+
+        // Unicidad de Correo (Cero IF)
+        Optional.of(request.getCorreo().trim().toLowerCase())
+                .filter(c -> clienteRepository.existsByCorreo(c) || usuarioRepository.existsByCorreo(c))
+                .ifPresent(c -> { throw new CorreoDuplicadoException(c); });
     }
 }
