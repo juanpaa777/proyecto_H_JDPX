@@ -2,16 +2,15 @@ package com.proyecto.servicios.controller;
 
 import com.proyecto.servicios.entity.mongo.CatalogoSyncLogDocument;
 import com.proyecto.servicios.model.producto.ProductoDto;
+import com.proyecto.servicios.model.producto.ProductoIdRequest;
+import com.proyecto.servicios.model.producto.ServicioIdRequest;
 import com.proyecto.servicios.service.CatalogoSyncService;
 import com.proyecto.servicios.service.ProductoService;
+import jakarta.validation.Valid;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
-import org.springframework.web.bind.annotation.GetMapping;
-import org.springframework.web.bind.annotation.PathVariable;
-import org.springframework.web.bind.annotation.PostMapping;
-import org.springframework.web.bind.annotation.RequestMapping;
-import org.springframework.web.bind.annotation.RestController;
+import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
 
@@ -36,27 +35,25 @@ public class ProductoController {
         return ResponseEntity.ok(catalogo);
     }
 
-    @GetMapping(value = "/{idProducto}", produces = MediaType.APPLICATION_JSON_VALUE)
-    public ResponseEntity<ProductoDto> consultarPorId(@PathVariable Integer idProducto) {
-        return productoService.consultarPorIdProducto(idProducto)
+    @PostMapping(value = "/detalle", produces = MediaType.APPLICATION_JSON_VALUE)
+    public ResponseEntity<ProductoDto> consultarPorId(@Valid @RequestBody ProductoIdRequest request) {
+        return productoService.consultarPorIdProducto(request.getIdProducto())
                 .map(ResponseEntity::ok)
                 .orElseGet(() -> ResponseEntity.status(HttpStatus.NOT_FOUND).build());
     }
 
-    @GetMapping(value = "/servicio/{idServicio}", produces = MediaType.APPLICATION_JSON_VALUE)
-    public ResponseEntity<List<ProductoDto>> consultarPorServicio(@PathVariable Integer idServicio) {
-        List<ProductoDto> productos = productoService.consultarPorIdServicio(idServicio);
+    @PostMapping(value = "/servicio", produces = MediaType.APPLICATION_JSON_VALUE)
+    public ResponseEntity<List<ProductoDto>> consultarPorServicio(@Valid @RequestBody ServicioIdRequest request) {
+        List<ProductoDto> productos = productoService.consultarPorIdServicio(request.getIdServicio());
         return ResponseEntity.ok(productos);
     }
 
     @PostMapping(value = "/sync", produces = MediaType.APPLICATION_JSON_VALUE)
     public ResponseEntity<CatalogoSyncLogDocument> sincronizarManual() {
         CatalogoSyncLogDocument resultado = catalogoSyncService.sincronizarCatalogoManual();
-        if ("EXITO".equals(resultado.getEstado())) {
-            return ResponseEntity.ok(resultado);
-        } else {
-            return ResponseEntity.status(HttpStatus.SERVICE_UNAVAILABLE).body(resultado);
-        }
+        return "EXITO".equals(resultado.getEstado())
+                ? ResponseEntity.ok(resultado)
+                : ResponseEntity.status(HttpStatus.SERVICE_UNAVAILABLE).body(resultado);
     }
 
     @GetMapping(value = "/xml", produces = MediaType.APPLICATION_XML_VALUE)

@@ -30,9 +30,24 @@ public class App implements CommandLineRunner {
         SpringApplication.run(App.class, args);
     }
 
+    @org.springframework.context.event.EventListener(org.springframework.boot.context.event.ApplicationReadyEvent.class)
+    public void abrirSwaggerEnNavegador() {
+        String url = "http://localhost:8080/swagger-ui/index.html";
+        log.info("Abriendo Swagger UI automáticamente en el navegador: {}", url);
+        try {
+            if (System.getProperty("os.name", "").toLowerCase().contains("win")) {
+                Runtime.getRuntime().exec(new String[]{"rundll32", "url.dll,FileProtocolHandler", url});
+            } else if (java.awt.Desktop.isDesktopSupported() && java.awt.Desktop.getDesktop().isSupported(java.awt.Desktop.Action.BROWSE)) {
+                java.awt.Desktop.getDesktop().browse(new java.net.URI(url));
+            }
+        } catch (Exception e) {
+            log.warn("No se pudo abrir el navegador automáticamente: {}", e.getMessage());
+        }
+    }
+
     @Override
     public void run(String... args) {
-        //	displayInfo(context.getBean(BuildProperties.class));
+        // displayInfo(context.getBean(BuildProperties.class));
     }
 
     private static void displayInfo(BuildProperties buildProperties) {
@@ -43,7 +58,5 @@ public class App implements CommandLineRunner {
                 + "Fecha Compilación: " + out + "\n"
                 + "Artefacto: " + buildProperties.getArtifact() + "\n"
                 + "Grupo: " + buildProperties.getGroup());
-
-
     }
 }
