@@ -125,7 +125,7 @@ class OnboardingServiceTest {
             return u;
         });
 
-        ClienteResponse response = onboardingService.registrarCliente(requestValido);
+        ClienteResponse response = onboardingService.registrarNuevoCliente(requestValido);
 
         assertNotNull(response);
         assertEquals(1L, response.getId());
@@ -148,7 +148,7 @@ class OnboardingServiceTest {
     void testRegistrarClienteCurpDuplicada() {
         when(clienteRepository.existsByCurp(anyString())).thenReturn(true);
 
-        assertThrows(CurpDuplicadaException.class, () -> onboardingService.registrarCliente(requestValido));
+        assertThrows(CurpDuplicadaException.class, () -> onboardingService.registrarNuevoCliente(requestValido));
         verify(clienteRepository, never()).save(any(Cliente.class));
     }
 
@@ -158,7 +158,7 @@ class OnboardingServiceTest {
         when(clienteRepository.existsByCurp(anyString())).thenReturn(false);
         when(clienteRepository.existsByRfc(anyString())).thenReturn(true);
 
-        assertThrows(RfcDuplicadoException.class, () -> onboardingService.registrarCliente(requestValido));
+        assertThrows(RfcDuplicadoException.class, () -> onboardingService.registrarNuevoCliente(requestValido));
         verify(clienteRepository, never()).save(any(Cliente.class));
     }
 
@@ -169,7 +169,7 @@ class OnboardingServiceTest {
         when(clienteRepository.existsByRfc(anyString())).thenReturn(false);
         when(clienteRepository.existsByCorreo(anyString())).thenReturn(true);
 
-        assertThrows(CorreoDuplicadoException.class, () -> onboardingService.registrarCliente(requestValido));
+        assertThrows(CorreoDuplicadoException.class, () -> onboardingService.registrarNuevoCliente(requestValido));
         verify(clienteRepository, never()).save(any(Cliente.class));
     }
 
@@ -178,7 +178,7 @@ class OnboardingServiceTest {
     void testRegistrarClienteMenorDeEdad() {
         requestValido.setFechaNacimiento(LocalDate.now().minusYears(17));
 
-        assertThrows(ValidacionNegocioException.class, () -> onboardingService.registrarCliente(requestValido));
+        assertThrows(ValidacionNegocioException.class, () -> onboardingService.registrarNuevoCliente(requestValido));
         verify(clienteRepository, never()).save(any(Cliente.class));
     }
 }

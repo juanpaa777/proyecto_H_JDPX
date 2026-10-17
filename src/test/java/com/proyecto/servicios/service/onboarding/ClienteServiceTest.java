@@ -2,6 +2,8 @@ package com.proyecto.servicios.service.onboarding;
 
 import com.proyecto.servicios.dto.onboarding.ClienteResponse;
 import com.proyecto.servicios.dto.onboarding.ClienteUpdateRequest;
+import com.proyecto.servicios.dto.onboarding.ConsultaClienteRequest;
+import com.proyecto.servicios.dto.onboarding.EliminaClienteRequest;
 import com.proyecto.servicios.entity.onboarding.Cliente;
 import com.proyecto.servicios.entity.onboarding.Cuenta;
 import com.proyecto.servicios.entity.onboarding.Usuario;
@@ -16,10 +18,16 @@ import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.PageImpl;
+import org.springframework.data.domain.PageRequest;
+import org.springframework.data.domain.Pageable;
+import org.springframework.data.jpa.domain.Specification;
 
 import java.math.BigDecimal;
 import java.time.LocalDate;
 import java.util.ArrayList;
+import java.util.List;
 import java.util.Optional;
 
 import static org.junit.jupiter.api.Assertions.*;
@@ -74,14 +82,42 @@ class ClienteServiceTest {
     }
 
     @Test
+    @DisplayName("Debe listar clientes paginados utilizando Specification dinámica")
+    @SuppressWarnings("unchecked")
+    void testListarClientesPaginados() {
+        Page<Cliente> pagina = new PageImpl<>(List.of(clienteExistente), PageRequest.of(0, 10), 1);
+        when(clienteRepository.findAll(any(Specification.class), any(Pageable.class))).thenReturn(pagina);
+
+        ConsultaClienteRequest request = ConsultaClienteRequest.builder().nombre("Carlos").build();
+        Page<ClienteResponse> resultado = clienteService.buscarClientesPaginados(request);
+
+        assertNotNull(resultado);
+        assertEquals(1, resultado.getTotalElements());
+        assertEquals("Carlos", resultado.getContent().get(0).getNombre());
+    }
+
+    @Test
+    @DisplayName("Debe obtener un cliente por ID correctamente")
+    void testObtenerClientePorId() {
+        when(clienteRepository.findById(1L)).thenReturn(Optional.of(clienteExistente));
+
+        ClienteResponse response = clienteService.obtenerClientePorId(1L);
+
+        assertNotNull(response);
+        assertEquals(1L, response.getId());
+        assertEquals("HEGC900101HDFRRN09", response.getCurp());
+    }
+
+    @Test
     @DisplayName("Debe rechazar la actualización si se intenta modificar la CURP")
     void testActualizarClienteCurpInmutable() {
         when(clienteRepository.findById(1L)).thenReturn(Optional.of(clienteExistente));
 
         ClienteUpdateRequest updateRequest = new ClienteUpdateRequest();
+        updateRequest.setId(1L);
         updateRequest.setCurp("OTRACURP1234567890");
 
-        assertThrows(ModificacionNoPermitidaException.class, () -> clienteService.actualizarParcial(1L, updateRequest));
+        assertThrows(ModificacionNoPermitidaException.class, () -> clienteService.actualizarClienteParcial(updateRequest));
         verify(clienteRepository, never()).save(any(Cliente.class));
     }
 
@@ -91,9 +127,10 @@ class ClienteServiceTest {
         when(clienteRepository.findById(1L)).thenReturn(Optional.of(clienteExistente));
 
         ClienteUpdateRequest updateRequest = new ClienteUpdateRequest();
+        updateRequest.setId(1L);
         updateRequest.setRfc("OTRORFC123456");
 
-        assertThrows(ModificacionNoPermitidaException.class, () -> clienteService.actualizarParcial(1L, updateRequest));
+        assertThrows(ModificacionNoPermitidaException.class, () -> clienteService.actualizarClienteParcial(updateRequest));
         verify(clienteRepository, never()).save(any(Cliente.class));
     }
 
@@ -103,7 +140,8 @@ class ClienteServiceTest {
         when(clienteRepository.findById(1L)).thenReturn(Optional.of(clienteExistente));
         when(clienteRepository.save(any(Cliente.class))).thenAnswer(i -> i.getArgument(0));
 
-        ClienteResponse response = clienteService.bajaLogica(1L);
+        EliminaClienteRequest eliminaRequest = new EliminaClienteRequest(1L);
+        ClienteResponse response = clienteService.darDeBajaClienteLogica(eliminaRequest);
 
         assertNotNull(response);
         assertFalse(clienteExistente.getActivo());

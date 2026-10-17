@@ -62,7 +62,7 @@ class AuthServiceTest {
         when(usuarioRepository.findByCorreo("ana.martinez@banco.com")).thenReturn(Optional.of(usuario));
         when(passwordEncoder.matches("PasswordSegura123!", "$2a$12$hashedPassword")).thenReturn(true);
 
-        LoginResponse response = authService.login(request);
+        LoginResponse response = authService.autenticarUsuario(request);
 
         assertNotNull(response);
         assertNotNull(response.getToken());
@@ -80,7 +80,7 @@ class AuthServiceTest {
         when(usuarioRepository.findByCorreo("ana.martinez@banco.com")).thenReturn(Optional.of(usuario));
         when(passwordEncoder.matches("PasswordErronea", "$2a$12$hashedPassword")).thenReturn(false);
 
-        assertThrows(CredencialesInvalidasException.class, () -> authService.login(request));
+        assertThrows(CredencialesInvalidasException.class, () -> authService.autenticarUsuario(request));
     }
 
     @Test
@@ -94,6 +94,6 @@ class AuthServiceTest {
 
         when(usuarioRepository.findByCorreo("ana.martinez@banco.com")).thenReturn(Optional.of(usuario));
 
-        assertThrows(UsuarioInactivoException.class, () -> authService.login(request));
+        assertThrows(UsuarioInactivoException.class, () -> authService.autenticarUsuario(request));
     }
 }
