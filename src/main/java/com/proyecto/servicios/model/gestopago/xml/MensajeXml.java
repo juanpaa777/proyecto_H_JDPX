@@ -20,4 +20,19 @@ public class MensajeXml {
 
     @XmlElement(name = "TEXTO")
     private String texto;
+
+    @XmlElement(name = "REFERENCIA")
+    private String referencia;
+
+    @XmlElement(name = "PIN")
+    private String pin;
+
+    @XmlElement(name = "legend")
+    private String legend;
+
+    @XmlElement(name = "ID_TX")
+    private String idTx;
+
+    @XmlElement(name = "SALDO")
+    private String saldo;
 }

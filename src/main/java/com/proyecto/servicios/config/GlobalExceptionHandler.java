@@ -1,6 +1,7 @@
 package com.proyecto.servicios.config;
 
 import com.proyecto.servicios.exception.onboarding.*;
+import com.proyecto.servicios.exception.pagos.*;
 import com.proyecto.servicios.model.GenericResponse;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.dao.DataAccessException;
@@ -40,10 +41,11 @@ public class GlobalExceptionHandler {
     @ExceptionHandler({
             UsuarioNoEncontradoException.class,
             ClienteNoEncontradoException.class,
-            CuentaNoEncontradaException.class
+            CuentaNoEncontradaException.class,
+            ProductoNoValidoException.class
     })
     public ResponseEntity<GenericResponse> handleNotFoundResourceException(RuntimeException ex) {
-        log.warn("Recurso no encontrado: {}", ex.getMessage());
+        log.warn("Recurso no encontrado o no válido: {}", ex.getMessage());
         GenericResponse response = new GenericResponse(HttpStatus.NOT_FOUND.value(), ex.getMessage());
         return ResponseEntity.status(HttpStatus.NOT_FOUND).body(response);
     }
@@ -51,10 +53,11 @@ public class GlobalExceptionHandler {
     @ExceptionHandler({
             CorreoDuplicadoException.class,
             CurpDuplicadaException.class,
-            RfcDuplicadoException.class
+            RfcDuplicadoException.class,
+            TransaccionDuplicadaException.class
     })
     public ResponseEntity<GenericResponse> handleDuplicateResourceException(RuntimeException ex) {
-        log.warn("Conflicto de unicidad: {}", ex.getMessage());
+        log.warn("Conflicto de unicidad o duplicidad: {}", ex.getMessage());
         GenericResponse response = new GenericResponse(HttpStatus.CONFLICT.value(), ex.getMessage());
         return ResponseEntity.status(HttpStatus.CONFLICT).body(response);
     }
@@ -76,12 +79,39 @@ public class GlobalExceptionHandler {
     @ExceptionHandler({
             ModificacionNoPermitidaException.class,
             ValidacionNegocioException.class,
-            ContrasenaInvalidaException.class
+            ContrasenaInvalidaException.class,
+            MontoInvalidoException.class
     })
     public ResponseEntity<GenericResponse> handleBadRequestBusinessExceptions(RuntimeException ex) {
         log.warn("Regla de negocio no cumplida: {}", ex.getMessage());
         GenericResponse response = new GenericResponse(HttpStatus.BAD_REQUEST.value(), ex.getMessage());
         return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(response);
+    }
+
+    @ExceptionHandler({
+            SaldoInsuficienteException.class,
+            PagoRechazadoProveedorException.class
+    })
+    public ResponseEntity<GenericResponse> handleUnprocessableOperationExceptions(RuntimeException ex) {
+        log.warn("Operación financiera rechazada: {}", ex.getMessage());
+        GenericResponse response = new GenericResponse(HttpStatus.UNPROCESSABLE_ENTITY.value(), ex.getMessage());
+        return ResponseEntity.status(HttpStatus.UNPROCESSABLE_ENTITY).body(response);
+    }
+
+    @ExceptionHandler(ProveedorExternoTimeoutException.class)
+    public ResponseEntity<GenericResponse> handleProviderTimeoutException(ProveedorExternoTimeoutException ex) {
+        log.error("Timeout en proveedor externo para UPC {}: {}", ex.getUpc(), ex.getMessage());
+        Map<String, String> detalles = Map.of(
+                "upc", ex.getUpc(),
+                "estatus", "PENDIENTE_CONCILIACION",
+                "accionRecomendada", "Ejecute el endpoint de conciliación (/api/v1/pagos-servicios/conciliar) después de 62 segundos para verificar si el cargo fue aplicado por el proveedor."
+        );
+        GenericResponse response = new GenericResponse(
+                HttpStatus.GATEWAY_TIMEOUT.value(),
+                ex.getMessage(),
+                detalles
+        );
+        return ResponseEntity.status(HttpStatus.GATEWAY_TIMEOUT).body(response);
     }
 
     @ExceptionHandler(NoResourceFoundException.class)
