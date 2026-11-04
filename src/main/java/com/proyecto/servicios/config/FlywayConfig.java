@@ -33,6 +33,9 @@ public class FlywayConfig {
                 .baselineOnMigrate(true)
                 .baselineVersion("0")
                 .load();
+        
+        // Repara checksums en caso de que se haya modificado un script SQL
+        flyway.repair();
         flyway.migrate();
         return flyway;
     }
