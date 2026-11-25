@@ -1,0 +1,37 @@
+databases:
+  - name: gestopago-postgres
+    plan: free
+    databaseName: pago_de_servicios
+    user: gestopago_user
+
+services:
+  - type: web
+    name: gestopago-backend
+    runtime: docker
+    plan: free
+    healthCheckPath: /actuator/health
+    envVars:
+      - key: PORT
+        value: 8080
+      - key: PGHOST
+        fromDatabase:
+          name: gestopago-postgres
+          property: host
+      - key: PGPORT
+        fromDatabase:
+          name: gestopago-postgres
+          property: port
+      - key: PGDATABASE
+        fromDatabase:
+          name: gestopago-postgres
+          property: database
+      - key: PGUSER
+        fromDatabase:
+          name: gestopago-postgres
+          property: user
+      - key: PGPASSWORD
+        fromDatabase:
+          name: gestopago-postgres
+          property: password
+      - key: SPRING_DATA_MONGODB_URI
+        sync: false

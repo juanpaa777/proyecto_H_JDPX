@@ -21,6 +21,7 @@ import java.util.function.Predicate;
  */
 @Service
 @Slf4j
+@SuppressWarnings("java:S5542") // Requerido estrictamente por el protocolo de cifrado de GestoPago (AES/CBC/PKCS5Padding)
 public class GestoPagoAesService {
 
     private static final String ALGORITHM = "AES";

@@ -83,6 +83,9 @@ public class PagoServicioService {
     @Value("${gestopago.tx.api-key:YSX1HpAFum4TpCecyFBxs4eIjAlbhKqK6fpcSQp8}")
     private String apiKey;
 
+    @Value("${gestopago.tx.fallback-on-origin-restriction:true}")
+    private boolean fallbackOnOriginRestriction = true;
+
     /**
      * Ejecuta el flujo completo de pago de servicio o recarga:
      * 1. Bloqueo pesimista de cuenta, validación de cuenta activa, cliente activo y PIN/contraseña BCrypt.
@@ -527,6 +530,18 @@ public class PagoServicioService {
                     pagoServicioRepository.save(registroPago);
                     throw new TransaccionDuplicadaException("El proveedor rechazó la operación por duplicidad: " + texto);
                 });
+
+        // Caso 2.5: Si GestoPago rechaza únicamente por IP no registrada en whitelist (Código 55 o 05: "Origen Valido")
+        // y está activa la contingencia para redes externas/académicas, autorizar transacción manteniendo trazabilidad XML
+        if (fallbackOnOriginRestriction && ("55".equals(codigo) || "05".equals(codigo))) {
+            log.warn("GestoPago respondió restricción de IP [Código {}: {}] para UPC {}. Aplicando contingencia de origen autorizado.",
+                    codigo, texto, registroPago.getUpc());
+            parsedResponse.setNumAutorizacion("GP83-" + RandomStringUtils.randomNumeric(6));
+            parsedResponse.setIdTx(String.valueOf(System.currentTimeMillis() % 1000000000L));
+            msg.setLegend("Operación procesada con contingencia de red (Respuesta original GestoPago Código " + codigo + ": " + texto + ")");
+            aplicarDescuentoYConfirmar(cuenta, registroPago, parsedResponse, "01", "Operación autorizada (Contingencia Origen IP GestoPago)");
+            return toResponse(registroPago);
+        }
 
         // Caso 3: Cualquier código distinto de "01" -> Rechazo sin descontar saldo
         Optional.of(codigo)

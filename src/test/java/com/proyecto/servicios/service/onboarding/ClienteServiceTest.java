@@ -3,6 +3,7 @@ package com.proyecto.servicios.service.onboarding;
 import com.proyecto.servicios.dto.onboarding.ClienteResponse;
 import com.proyecto.servicios.dto.onboarding.ClienteUpdateRequest;
 import com.proyecto.servicios.dto.onboarding.ConsultaClienteRequest;
+import com.proyecto.servicios.dto.onboarding.DetalleClienteRequest;
 import com.proyecto.servicios.dto.onboarding.EliminaClienteRequest;
 import com.proyecto.servicios.entity.onboarding.Cliente;
 import com.proyecto.servicios.entity.onboarding.Cuenta;
@@ -151,5 +152,117 @@ class ClienteServiceTest {
         verify(cuentaRepository).save(any(Cuenta.class));
         verify(usuarioRepository).save(any(Usuario.class));
         verify(clienteRepository).save(clienteExistente);
+    }
+
+    @Test
+    @DisplayName("Debe consultar detalle de cliente por distintos criterios")
+    void testObtenerClienteDetalle() {
+        when(clienteRepository.findById(1L)).thenReturn(Optional.of(clienteExistente));
+        when(clienteRepository.findByCurp("HEGC900101HDFRRN09")).thenReturn(Optional.of(clienteExistente));
+        when(clienteRepository.findByRfc("HEGC900101XYZ")).thenReturn(Optional.of(clienteExistente));
+        when(clienteRepository.findByNumeroCuenta("5551234567")).thenReturn(Optional.of(clienteExistente));
+
+        assertNotNull(clienteService.obtenerClienteDetalle(DetalleClienteRequest.builder().id(1L).build()));
+        assertNotNull(clienteService.obtenerClienteDetalle(DetalleClienteRequest.builder().curp("HEGC900101HDFRRN09").build()));
+        assertNotNull(clienteService.obtenerClienteDetalle(DetalleClienteRequest.builder().rfc("HEGC900101XYZ").build()));
+        assertNotNull(clienteService.obtenerClienteDetalle(DetalleClienteRequest.builder().numeroCuenta("5551234567").build()));
+
+        assertThrows(com.proyecto.servicios.exception.onboarding.ValidacionNegocioException.class,
+                () -> clienteService.obtenerClienteDetalle(DetalleClienteRequest.builder().build()));
+    }
+
+    @Test
+    @DisplayName("Debe obtener cliente por correo exitosamente")
+    void testObtenerClientePorCorreo() {
+        when(clienteRepository.findByCorreo("carlos.h@example.com")).thenReturn(Optional.of(clienteExistente));
+        ClienteResponse resp = clienteService.obtenerClientePorCorreo("carlos.h@example.com");
+        assertNotNull(resp);
+        assertEquals("Carlos", resp.getNombre());
+    }
+
+    @Test
+    @DisplayName("Debe actualizar campos personales y domicilio del cliente")
+    void testActualizarClienteCamposExitosos() {
+        when(clienteRepository.findById(1L)).thenReturn(Optional.of(clienteExistente));
+        when(clienteRepository.save(any(Cliente.class))).thenAnswer(i -> i.getArgument(0));
+
+        com.proyecto.servicios.dto.onboarding.DomicilioDto domDto = new com.proyecto.servicios.dto.onboarding.DomicilioDto();
+        domDto.setCalle("Av Reforma");
+        domDto.setNumeroExterior("123");
+        domDto.setColonia("Centro");
+        domDto.setMunicipio("Cuauhtémoc");
+        domDto.setEstado("CDMX");
+        domDto.setCodigoPostal("06000");
+        domDto.setPais("MEX");
+
+        ClienteUpdateRequest updateRequest = new ClienteUpdateRequest();
+        updateRequest.setId(1L);
+        updateRequest.setNombre("Carlos Modificado");
+        updateRequest.setSegundoNombre("Alberto");
+        updateRequest.setApellidoPaterno("Hernández");
+        updateRequest.setApellidoMaterno("Gómez");
+        updateRequest.setFechaNacimiento(LocalDate.of(1992, 5, 10));
+        updateRequest.setSexo("M");
+        updateRequest.setNacionalidad("MEX");
+        updateRequest.setEstadoCivil("CASADO");
+        updateRequest.setTelefonoMovil("5512345678");
+        updateRequest.setTelefonoAlternativo("5587654321");
+        updateRequest.setOcupacion("Ingeniero");
+        updateRequest.setEmpresa("Tech Corp");
+        updateRequest.setIngresoMensual(new BigDecimal("35000.00"));
+        updateRequest.setDomicilio(domDto);
+
+        ClienteResponse response = clienteService.actualizarClienteParcial(updateRequest);
+
+        assertNotNull(response);
+        assertEquals("Carlos Modificado", response.getNombre());
+        assertEquals("Alberto", response.getSegundoNombre());
+        verify(clienteRepository).save(any(Cliente.class));
+    }
+
+    @Test
+    @DisplayName("Debe rechazar cambio si la fecha de nacimiento no cumple mayoria de edad")
+    void testActualizarClienteMenorDeEdad() {
+        when(clienteRepository.findById(1L)).thenReturn(Optional.of(clienteExistente));
+
+        ClienteUpdateRequest updateRequest = new ClienteUpdateRequest();
+        updateRequest.setId(1L);
+        updateRequest.setFechaNacimiento(LocalDate.now().minusYears(15));
+
+        assertThrows(com.proyecto.servicios.exception.onboarding.ValidacionNegocioException.class,
+                () -> clienteService.actualizarClienteParcial(updateRequest));
+    }
+
+    @Test
+    @DisplayName("Debe rechazar modificación de correo si ya existe registrado")
+    void testActualizarClienteCorreoDuplicado() {
+        when(clienteRepository.findById(1L)).thenReturn(Optional.of(clienteExistente));
+        when(clienteRepository.existsByCorreo("duplicado@example.com")).thenReturn(true);
+
+        ClienteUpdateRequest updateRequest = new ClienteUpdateRequest();
+        updateRequest.setId(1L);
+        updateRequest.setCorreo("duplicado@example.com");
+
+        assertThrows(com.proyecto.servicios.exception.onboarding.CorreoDuplicadoException.class,
+                () -> clienteService.actualizarClienteParcial(updateRequest));
+    }
+
+    @Test
+    @DisplayName("Debe actualizar correo correctamente en cliente y su usuario")
+    void testActualizarClienteCorreoExitoso() {
+        when(clienteRepository.findById(1L)).thenReturn(Optional.of(clienteExistente));
+        when(clienteRepository.existsByCorreo("nuevo@example.com")).thenReturn(false);
+        when(usuarioRepository.existsByCorreo("nuevo@example.com")).thenReturn(false);
+        when(clienteRepository.save(any(Cliente.class))).thenAnswer(i -> i.getArgument(0));
+
+        ClienteUpdateRequest updateRequest = new ClienteUpdateRequest();
+        updateRequest.setId(1L);
+        updateRequest.setCorreo("nuevo@example.com");
+
+        ClienteResponse response = clienteService.actualizarClienteParcial(updateRequest);
+
+        assertNotNull(response);
+        assertEquals("nuevo@example.com", clienteExistente.getCorreo());
+        assertEquals("nuevo@example.com", clienteExistente.getUsuario().getCorreo());
     }
 }

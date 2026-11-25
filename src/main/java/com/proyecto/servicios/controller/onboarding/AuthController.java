@@ -2,28 +2,59 @@ package com.proyecto.servicios.controller.onboarding;
 
 import com.proyecto.servicios.dto.onboarding.LoginRequest;
 import com.proyecto.servicios.dto.onboarding.LoginResponse;
+import com.proyecto.servicios.dto.onboarding.SessionStatusResponse;
+import com.proyecto.servicios.dto.onboarding.Verify2faRequest;
+import com.proyecto.servicios.model.GenericResponse;
 import com.proyecto.servicios.service.onboarding.AuthService;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
-import org.springframework.web.bind.annotation.PostMapping;
-import org.springframework.web.bind.annotation.RequestBody;
-import org.springframework.web.bind.annotation.RequestMapping;
-import org.springframework.web.bind.annotation.RestController;
+import org.springframework.web.bind.annotation.*;
 
 @RestController
 @RequestMapping("/auth")
 @RequiredArgsConstructor
-@Tag(name = "Autenticación", description = "Endpoints de autenticación y generación de tokens de seguridad")
+@Tag(name = "Autenticación, 2FA y Control de Sesiones", description = "Endpoints de autenticación con BCrypt, doble factor (2FA) y exclusividad de sesión activa en servidor")
 public class AuthController {
 
     private final AuthService authService;
 
     @PostMapping("/login")
-    @Operation(summary = "Inicio de sesión (Login)", description = "Valida correo, contraseña con BCrypt, comprueba usuario activo y genera token")
+    @Operation(
+            summary = "Inicio de sesión (Paso 1: Credenciales y Detección de Sesión Activa)",
+            description = "Valida correo y contraseña con BCrypt, verifica si existe otra sesión activa en otro dispositivo (409 Conflict) y genera el desafío 2FA de 6 dígitos."
+    )
     public ResponseEntity<LoginResponse> login(@Valid @RequestBody LoginRequest request) {
         return ResponseEntity.ok(authService.autenticarUsuario(request));
+    }
+
+    @PostMapping("/verify-2fa")
+    @Operation(
+            summary = "Verificación de Segundo Factor (Paso 2: Validación OTP en Servidor y Emisión de JWT)",
+            description = "Valida el código temporal de 6 dígitos en el servidor (expiración 5 min, máx 3 intentos, no reutilizable), revoca sesiones previas si se autorizó y emite el JWT definitivo."
+    )
+    public ResponseEntity<LoginResponse> verify2fa(@Valid @RequestBody Verify2faRequest request) {
+        return ResponseEntity.ok(authService.verificarCodigo2fa(request));
+    }
+
+    @PostMapping("/logout")
+    @Operation(
+            summary = "Cerrar sesión activa de forma segura",
+            description = "Invalida inmediatamente la sesión actual en el servidor PostgreSQL para impedir el uso posterior del token."
+    )
+    public ResponseEntity<GenericResponse> logout(@RequestHeader(value = "Authorization", required = false) String authHeader) {
+        authService.cerrarSesion(authHeader);
+        return ResponseEntity.ok(new GenericResponse(200, "Sesión finalizada correctamente en el servidor."));
+    }
+
+    @GetMapping("/session-status")
+    @Operation(
+            summary = "Consultar estado de la sesión actual y saldo actualizado",
+            description = "Verifica en el servidor si el token JWT sigue perteneciendo a una sesión activa y devuelve los datos de la cuenta del usuario."
+    )
+    public ResponseEntity<SessionStatusResponse> sessionStatus(@RequestHeader(value = "Authorization", required = false) String authHeader) {
+        return ResponseEntity.ok(authService.consultarEstadoSesion(authHeader));
     }
 }

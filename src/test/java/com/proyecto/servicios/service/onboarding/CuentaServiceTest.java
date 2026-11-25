@@ -137,4 +137,51 @@ class CuentaServiceTest {
         assertThrows(ValidacionNegocioException.class, () -> cuentaService.actualizarCuentaParcial(update));
         verify(cuentaRepository, never()).save(any(Cuenta.class));
     }
+
+    @Test
+    @DisplayName("Debe actualizar cuenta con saldo y estatus válido")
+    void testActualizarCuentaValida() {
+        when(cuentaRepository.findByNumeroCuenta("4028193847")).thenReturn(Optional.of(cuentaActiva));
+        when(cuentaRepository.save(any(Cuenta.class))).thenAnswer(i -> i.getArgument(0));
+
+        CuentaUpdateRequest update = new CuentaUpdateRequest();
+        update.setNumeroCuenta("4028193847");
+        update.setSaldo(new BigDecimal("2500.00"));
+        update.setEstatus("BLOQUEADA");
+
+        CuentaResponse resp = cuentaService.actualizarCuentaParcial(update);
+        assertNotNull(resp);
+        assertEquals("BLOQUEADA", cuentaActiva.getEstatus());
+        assertEquals(new BigDecimal("2500.00"), cuentaActiva.getSaldo());
+    }
+
+    @Test
+    @DisplayName("Debe consultar detalle de cuenta y saldo por número")
+    void testConsultarDetalleCuentaYSaldo() {
+        when(cuentaRepository.findByNumeroCuenta("4028193847")).thenReturn(Optional.of(cuentaActiva));
+
+        DetalleCuentaRequest req = new DetalleCuentaRequest();
+        req.setNumeroCuenta("4028193847");
+
+        CuentaResponse cuentaResp = cuentaService.obtenerCuentaDetalle(req);
+        assertNotNull(cuentaResp);
+        assertEquals("4028193847", cuentaResp.getNumeroCuenta());
+
+        SaldoResponse saldoResp = cuentaService.obtenerSaldoDetalle(req);
+        assertNotNull(saldoResp);
+        assertEquals("4028193847", saldoResp.getNumeroCuenta());
+    }
+
+    @Test
+    @DisplayName("Debe rechazar activar cuenta si el cliente está inactivo")
+    void testActualizarCuentaClienteInactivo() {
+        clienteActivo.setActivo(false);
+        when(cuentaRepository.findByNumeroCuenta("4028193847")).thenReturn(Optional.of(cuentaActiva));
+
+        CuentaUpdateRequest update = new CuentaUpdateRequest();
+        update.setNumeroCuenta("4028193847");
+        update.setEstatus("ACTIVA");
+
+        assertThrows(ValidacionNegocioException.class, () -> cuentaService.actualizarCuentaParcial(update));
+    }
 }

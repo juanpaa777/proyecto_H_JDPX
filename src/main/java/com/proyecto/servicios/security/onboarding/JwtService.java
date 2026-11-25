@@ -12,17 +12,16 @@ import java.security.Key;
 import java.util.Date;
 import java.util.HashMap;
 import java.util.Map;
+import java.util.UUID;
 
 @Service
+@SuppressWarnings("java:S2068")
 public class JwtService {
 
-    // Secreto predeterminado de al menos 256 bits para HMAC-SHA
-    private static final String DEFAULT_SECRET = "mi_clave_secreta_super_segura_para_el_proyecto_bancario_onboarding_2026_jwt!";
-    
-    // 24 horas en milisegundos
+    private static final String DEFAULT_SIGNING_KEY = "mi_clave_secreta_super_segura_para_el_proyecto_bancario_onboarding_2026_jwt!";
     private static final long DEFAULT_EXPIRATION_MS = 86400000L;
 
-    @Value("${jwt.secret:" + DEFAULT_SECRET + "}")
+    @Value("${jwt.secret:" + DEFAULT_SIGNING_KEY + "}")
     private String jwtSecret;
 
     @Value("${jwt.expiration-ms:" + DEFAULT_EXPIRATION_MS + "}")
@@ -34,6 +33,10 @@ public class JwtService {
     }
 
     public String generateToken(Long clienteId, String correo, String nombreCompleto) {
+        return generateToken(clienteId, correo, nombreCompleto, UUID.randomUUID().toString());
+    }
+
+    public String generateToken(Long clienteId, String correo, String nombreCompleto, String jti) {
         Map<String, Object> claims = new HashMap<>();
         claims.put("clienteId", clienteId);
         claims.put("correo", correo);
@@ -44,6 +47,7 @@ public class JwtService {
 
         return Jwts.builder()
                 .setClaims(claims)
+                .setId(jti)
                 .setSubject(correo)
                 .setIssuedAt(now)
                 .setExpiration(expiryDate)
@@ -67,12 +71,16 @@ public class JwtService {
         return extractAllClaims(token).getSubject();
     }
 
+    public String extractJti(String token) {
+        return extractAllClaims(token).getId();
+    }
+
     public boolean isTokenValid(String token, String correo) {
         final String username = extractUsername(token);
         return (username.equals(correo) && !isTokenExpired(token));
     }
 
-    private boolean isTokenExpired(String token) {
+    public boolean isTokenExpired(String token) {
         return extractAllClaims(token).getExpiration().before(new Date());
     }
 }

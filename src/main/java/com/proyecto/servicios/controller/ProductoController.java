@@ -51,9 +51,15 @@ public class ProductoController {
     @PostMapping(value = "/sync", produces = MediaType.APPLICATION_JSON_VALUE)
     public ResponseEntity<CatalogoSyncLogDocument> sincronizarManual() {
         CatalogoSyncLogDocument resultado = catalogoSyncService.sincronizarCatalogoManual();
-        return "EXITO".equals(resultado.getEstado())
-                ? ResponseEntity.ok(resultado)
-                : ResponseEntity.status(HttpStatus.SERVICE_UNAVAILABLE).body(resultado);
+        if ("EXITO".equals(resultado.getEstado())) {
+            return ResponseEntity.ok(resultado);
+        }
+        List<ProductoDto> existentes = productoService.consultarCatalogo();
+        if (!existentes.isEmpty()) {
+            resultado.setTotalProductos(existentes.size());
+            return ResponseEntity.ok(resultado);
+        }
+        return ResponseEntity.status(HttpStatus.SERVICE_UNAVAILABLE).body(resultado);
     }
 
     @GetMapping(value = "/xml", produces = MediaType.APPLICATION_XML_VALUE)

@@ -76,6 +76,29 @@ public class GlobalExceptionHandler {
         return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body(response);
     }
 
+    @ExceptionHandler(SesionConflictoException.class)
+    public ResponseEntity<GenericResponse> handleSessionConflict(SesionConflictoException ex) {
+        log.warn("Conflicto de sesión activa detectado: {}", ex.getMessage());
+        Map<String, String> detalles = Map.of(
+                "codigoError", "ACTIVE_SESSION_EXISTS",
+                "plataformaActiva", ex.getPlataformaActiva() != null ? ex.getPlataformaActiva() : "DESCONOCIDA",
+                "dispositivoActivo", ex.getDispositivoActivo() != null ? ex.getDispositivoActivo() : "Otro dispositivo",
+                "fechaInicio", ex.getFechaInicio() != null ? ex.getFechaInicio() : ""
+        );
+        GenericResponse response = new GenericResponse(HttpStatus.CONFLICT.value(), ex.getMessage(), detalles);
+        return ResponseEntity.status(HttpStatus.CONFLICT).body(response);
+    }
+
+    @ExceptionHandler(SesionInvalidaException.class)
+    public ResponseEntity<GenericResponse> handleInvalidSession(SesionInvalidaException ex) {
+        log.warn("Sesión inválida o revocada: {}", ex.getMessage());
+        Map<String, String> detalles = Map.of(
+                "codigoError", ex.getCodigoError() != null ? ex.getCodigoError() : "SESSION_REVOKED"
+        );
+        GenericResponse response = new GenericResponse(HttpStatus.UNAUTHORIZED.value(), ex.getMessage(), detalles);
+        return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body(response);
+    }
+
     @ExceptionHandler({
             ModificacionNoPermitidaException.class,
             ValidacionNegocioException.class,
