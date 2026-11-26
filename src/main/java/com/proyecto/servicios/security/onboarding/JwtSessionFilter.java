@@ -40,7 +40,8 @@ public class JwtSessionFilter extends OncePerRequestFilter {
         String path = request.getRequestURI();
         if ("OPTIONS".equalsIgnoreCase(request.getMethod())
                 || path.startsWith("/auth/login")
-                || path.startsWith("/auth/verify-2fa")) {
+                || path.startsWith("/auth/verify-2fa")
+                || path.startsWith("/auth/totp-relink")) {
             filterChain.doFilter(request, response);
             return;
         }

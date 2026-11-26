@@ -458,6 +458,41 @@ public class AuthService {
                 .build();
     }
 
+    @Transactional
+    public LoginResponse relinkTotpPorDesafio(String desafioId) {
+        if (codigo2faRepository == null || desafioId == null || desafioId.isBlank()) {
+            throw new CredencialesInvalidasException("Credenciales inválidas o acceso no autorizado.");
+        }
+        Codigo2fa desafio = codigo2faRepository.findByDesafioId(desafioId.trim())
+                .orElseThrow(() -> new CredencialesInvalidasException("Credenciales inválidas o acceso no autorizado."));
+        if (Boolean.TRUE.equals(desafio.getUsado()) || desafio.getFechaExpiracion().isBefore(LocalDateTime.now())) {
+            throw new CredencialesInvalidasException("Credenciales inválidas o acceso no autorizado.");
+        }
+        Usuario usuario = usuarioRepository.findById(desafio.getUsuarioId())
+                .orElseThrow(() -> new CredencialesInvalidasException("Credenciales inválidas o acceso no autorizado."));
+
+        usuario.setTotpSecret(totpService.generarSecretoBase32());
+        usuario.setTotpVerificado(false);
+        usuario.setTotpUltimoPaso(null);
+        usuarioRepository.save(usuario);
+
+        String nombreCompleto = Optional.ofNullable(usuario.getCliente())
+                .map(c -> c.getNombre() + " " + c.getApellidoPaterno())
+                .orElse(usuario.getCorreo());
+
+        return LoginResponse.builder()
+                .requiere2fa(true)
+                .desafioId(desafio.getDesafioId())
+                .expira2faSegundos(300L)
+                .correo(usuario.getCorreo())
+                .nombreCompleto(nombreCompleto)
+                .otpauthUri(totpService.generarOtpAuthUri(usuario.getCorreo(), usuario.getTotpSecret()))
+                .totpSecretManual(usuario.getTotpSecret())
+                .totpVinculado(false)
+                .mensaje("Escanea el código QR con Google Authenticator e ingresa el código de 6 dígitos.")
+                .build();
+    }
+
     @Transactional(readOnly = true)
     public ClienteResponse obtenerMiCuentaAutenticada(String authHeader) {
         SessionStatusResponse sesion = consultarEstadoSesion(authHeader);

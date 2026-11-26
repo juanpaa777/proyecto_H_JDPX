@@ -77,6 +77,15 @@ public class AuthController {
         return ResponseEntity.ok(authService.regenerarTotpQrAutenticado(authHeader));
     }
 
+    @PostMapping("/totp-relink")
+    @Operation(
+            summary = "Regenerar QR TOTP durante el desafío 2FA",
+            description = "Permite volver a vincular Google Authenticator usando un desafío 2FA vigente al iniciar sesión desde otro dispositivo."
+    )
+    public ResponseEntity<LoginResponse> relinkTotp(@RequestBody java.util.Map<String, String> body) {
+        return ResponseEntity.ok(authService.relinkTotpPorDesafio(body != null ? body.get("desafioId") : null));
+    }
+
     @GetMapping("/mi-cuenta")
     @Operation(
             summary = "Obtener datos y cuentas del titular autenticado",
