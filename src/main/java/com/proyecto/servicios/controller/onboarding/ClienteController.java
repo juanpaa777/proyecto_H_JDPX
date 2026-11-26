@@ -3,8 +3,10 @@ package com.proyecto.servicios.controller.onboarding;
 import com.proyecto.servicios.dto.onboarding.*;
 import com.proyecto.servicios.service.onboarding.ClienteService;
 import com.proyecto.servicios.service.onboarding.OnboardingService;
+import com.proyecto.servicios.service.onboarding.RegistroConsultaService;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
+import jakarta.servlet.http.HttpServletRequest;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.Page;
@@ -20,6 +22,28 @@ public class ClienteController {
 
     private final OnboardingService onboardingService;
     private final ClienteService clienteService;
+    private final RegistroConsultaService registroConsultaService;
+
+    @PostMapping("/verificar-disponibilidad")
+    @Operation(summary = "Verificar disponibilidad temprana de correo, CURP o RFC", description = "Valida si el dato ya existe sin exponer información de otra cuenta y con límite de intentos")
+    public ResponseEntity<VerificarDisponibilidadResponse> verificarDisponibilidad(
+            @Valid @RequestBody VerificarDisponibilidadRequest request,
+            HttpServletRequest httpRequest
+    ) {
+        String clientKey = httpRequest.getHeader("X-Forwarded-For");
+        if (clientKey == null || clientKey.isBlank()) {
+            clientKey = httpRequest.getRemoteAddr();
+        }
+        return ResponseEntity.ok(registroConsultaService.verificarDisponibilidad(request, clientKey));
+    }
+
+    @PostMapping("/cp")
+    @Operation(summary = "Consultar estado, municipio y colonias por código postal", description = "Consulta Postali enviando únicamente el código postal de 5 dígitos")
+    public ResponseEntity<CodigoPostalResponse> consultarCodigoPostal(
+            @Valid @RequestBody CodigoPostalRequest request
+    ) {
+        return ResponseEntity.ok(registroConsultaService.consultarCodigoPostal(request.getCodigoPostal()));
+    }
 
     @PostMapping("/registrar")
     @Operation(summary = "Registrar un nuevo cliente", description = "Crea el cliente, su domicilio, cuenta bancaria inicial y usuario con contraseña cifrada")

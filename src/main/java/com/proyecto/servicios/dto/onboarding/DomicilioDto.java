@@ -17,14 +17,14 @@ public class DomicilioDto {
     private Long id;
 
     @NotBlank(message = "La calle es obligatoria")
-    @Size(max = 100, message = "La calle no puede exceder 100 caracteres")
+    @Pattern(regexp = "^[\\p{L}0-9\\s.,#'\\-/°]{2,100}$", message = "La calle solo puede contener letras, números, espacios y puntuación básica (2 a 100 caracteres)")
     private String calle;
 
     @NotBlank(message = "El número exterior es obligatorio")
-    @Size(max = 20, message = "El número exterior no puede exceder 20 caracteres")
+    @Pattern(regexp = "^[\\p{L}0-9\\s\\-/]{1,20}$", message = "El número exterior solo acepta letras, números, espacios, guion o '/' (ej. 12-A o S/N)")
     private String numeroExterior;
 
-    @Size(max = 20, message = "El número interior no puede exceder 20 caracteres")
+    @Pattern(regexp = "^$|^[\\p{L}0-9\\s\\-/]{1,20}$", message = "El número interior solo acepta letras, números, espacios, guion o '/' (máx. 20 caracteres)")
     private String numeroInterior;
 
     @NotBlank(message = "La colonia es obligatoria")

@@ -18,18 +18,17 @@ public class RegistroClienteRequest {
 
     // --- Datos Personales ---
     @NotBlank(message = "El nombre es obligatorio")
-    @Pattern(regexp = "^[\\p{L}\\s]{2,50}$", message = "El nombre debe contener solo letras y espacios, entre 2 y 50 caracteres")
+    @Pattern(regexp = "^[\\p{L}\\s'\\-.]{2,50}$", message = "El nombre solo acepta letras, espacios, guion, apóstrofo o punto (2 a 50 caracteres)")
     private String nombre;
 
-    @Pattern(regexp = "^$|^[\\p{L}\\s]{2,50}$", message = "El segundo nombre debe contener solo letras y espacios, entre 2 y 50 caracteres")
+    @Pattern(regexp = "^$|^[\\p{L}\\s'\\-.]{2,50}$", message = "El segundo nombre solo acepta letras, espacios, guion, apóstrofo o punto (2 a 50 caracteres)")
     private String segundoNombre;
 
     @NotBlank(message = "El apellido paterno es obligatorio")
-    @Pattern(regexp = "^[\\p{L}\\s]{2,50}$", message = "El apellido paterno debe contener solo letras y espacios, entre 2 y 50 caracteres")
+    @Pattern(regexp = "^[\\p{L}\\s'\\-.]{2,50}$", message = "El apellido paterno solo acepta letras, espacios, guion, apóstrofo o punto (2 a 50 caracteres)")
     private String apellidoPaterno;
 
-    @NotBlank(message = "El apellido materno es obligatorio")
-    @Pattern(regexp = "^[\\p{L}\\s]{2,50}$", message = "El apellido materno debe contener solo letras y espacios, entre 2 y 50 caracteres")
+    @Pattern(regexp = "^$|^[\\p{L}\\s'\\-.]{2,50}$", message = "El segundo apellido solo acepta letras, espacios, guion, apóstrofo o punto (2 a 50 caracteres)")
     private String apellidoMaterno;
 
     @NotNull(message = "La fecha de nacimiento es obligatoria")
@@ -59,7 +58,7 @@ public class RegistroClienteRequest {
     // --- Datos de Contacto ---
     @NotBlank(message = "El correo electrónico es obligatorio")
     @Email(message = "El correo electrónico debe ser válido")
-    @Size(max = 100, message = "El correo no puede exceder 100 caracteres")
+    @Size(max = 254, message = "El correo no puede exceder 254 caracteres")
     private String correo;
 
     @NotBlank(message = "El teléfono móvil es obligatorio")
@@ -79,7 +78,6 @@ public class RegistroClienteRequest {
     @Size(max = 80, message = "La ocupación no puede exceder 80 caracteres")
     private String ocupacion;
 
-    @NotBlank(message = "La empresa es obligatoria")
     @Size(max = 100, message = "La empresa no puede exceder 100 caracteres")
     private String empresa;
 

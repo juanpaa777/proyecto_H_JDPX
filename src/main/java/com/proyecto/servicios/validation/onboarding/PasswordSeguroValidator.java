@@ -9,9 +9,9 @@ import java.util.regex.Pattern;
 @SuppressWarnings("java:S2068")
 public class PasswordSeguroValidator implements ConstraintValidator<PasswordSeguro, String> {
 
-    // Al menos 8 caracteres y máximo 100 caracteres, 1 mayúscula, 1 minúscula, 1 número, 1 carácter especial
+    // Al menos 8 caracteres y máximo 100 caracteres, 1 mayúscula, 1 minúscula, 1 número, 1 símbolo (sin espacios)
     private static final String PWD_PATTERN_REGEX =
-            "^(?=.*[a-z])(?=.*[A-Z])(?=.*\\d)(?=.*[@$!%*?&._#+\\-])[A-Za-z\\d@$!%*?&._#+\\-]{8,100}$";
+            "^(?=.*[a-z])(?=.*[A-Z])(?=.*\\d)(?=.*[^A-Za-z0-9\\s])\\S{8,100}$";
 
     private static final Pattern PATTERN = Pattern.compile(PWD_PATTERN_REGEX);
 

@@ -36,7 +36,7 @@ public class Cliente {
     @Column(name = "apellido_paterno", nullable = false, length = 50)
     private String apellidoPaterno;
 
-    @Column(name = "apellido_materno", nullable = false, length = 50)
+    @Column(name = "apellido_materno", nullable = true, length = 50)
     private String apellidoMaterno;
 
     @Column(name = "fecha_nacimiento", nullable = false)
@@ -57,7 +57,7 @@ public class Cliente {
     @Column(name = "estado_civil", nullable = false, length = 20)
     private String estadoCivil;
 
-    @Column(name = "correo", nullable = false, unique = true, length = 100)
+    @Column(name = "correo", nullable = false, unique = true, length = 254)
     private String correo;
 
     @Column(name = "telefono_movil", nullable = false, length = 10)

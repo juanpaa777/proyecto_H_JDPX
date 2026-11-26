@@ -50,8 +50,7 @@ public class OnboardingService {
      */
     @Transactional(rollbackFor = Exception.class)
     public ClienteResponse registrarNuevoCliente(RegistroClienteRequest request) {
-        log.info("Iniciando onboarding para cliente con CURP: {}, RFC: {}, Correo: {}",
-                request.getCurp(), request.getRfc(), request.getCorreo());
+        log.info("Iniciando proceso de onboarding de nuevo cliente");
 
         // 1. Validaciones funcionales sin IF
         validarUnicidadYReglas(request);
@@ -64,7 +63,10 @@ public class OnboardingService {
                 .filter(Predicate.not(String::isEmpty))
                 .orElse(null));
         cliente.setApellidoPaterno(request.getApellidoPaterno().trim());
-        cliente.setApellidoMaterno(request.getApellidoMaterno().trim());
+        cliente.setApellidoMaterno(Optional.ofNullable(request.getApellidoMaterno())
+                .map(String::trim)
+                .filter(Predicate.not(String::isEmpty))
+                .orElse(null));
         cliente.setFechaNacimiento(request.getFechaNacimiento());
         cliente.setCurp(request.getCurp().trim().toUpperCase());
         cliente.setRfc(request.getRfc().trim().toUpperCase());
@@ -78,7 +80,10 @@ public class OnboardingService {
                 .filter(Predicate.not(String::isEmpty))
                 .orElse(null));
         cliente.setOcupacion(request.getOcupacion().trim());
-        cliente.setEmpresa(request.getEmpresa().trim());
+        cliente.setEmpresa(Optional.ofNullable(request.getEmpresa())
+                .map(String::trim)
+                .filter(Predicate.not(String::isEmpty))
+                .orElse("No aplica"));
         cliente.setIngresoMensual(request.getIngresoMensual());
         cliente.setActivo(true);
 
@@ -133,8 +138,7 @@ public class OnboardingService {
         usuario = usuarioRepository.save(usuario);
         cliente.setUsuario(usuario);
 
-        log.info("Onboarding completado exitosamente. Cliente ID: {}, Cuenta: {}, Usuario: {}",
-                cliente.getId(), cuenta.getNumeroCuenta(), usuario.getCorreo());
+        log.info("Onboarding completado exitosamente. Cliente ID: {}", cliente.getId());
 
         return ClienteMapper.toResponse(cliente);
     }

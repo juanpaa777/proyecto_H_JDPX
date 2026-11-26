@@ -1,22 +1,19 @@
 package com.proyecto.servicios.dto.onboarding;
 
-import io.swagger.v3.oas.annotations.media.Schema;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.Pattern;
 import lombok.AllArgsConstructor;
-import lombok.Builder;
-import lombok.Data;
+import lombok.Getter;
 import lombok.NoArgsConstructor;
+import lombok.Setter;
 
-@Data
-@Builder
+@Getter
+@Setter
 @NoArgsConstructor
 @AllArgsConstructor
-@Schema(description = "DTO para consultas y sincronización por Código Postal mediante RequestBody")
 public class CodigoPostalRequest {
 
     @NotBlank(message = "El código postal es obligatorio")
-    @Pattern(regexp = "^[0-9]{5}$", message = "El código postal debe contener exactamente 5 dígitos numéricos")
-    @Schema(description = "Código postal de 5 dígitos", example = "37800")
+    @Pattern(regexp = "^[0-9]{5}$", message = "El código postal debe tener exactamente 5 dígitos")
     private String codigoPostal;
 }

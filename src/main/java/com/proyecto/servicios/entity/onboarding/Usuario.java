@@ -28,7 +28,7 @@ public class Usuario {
     @JsonBackReference
     private Cliente cliente;
 
-    @Column(name = "correo", nullable = false, unique = true, length = 100)
+    @Column(name = "correo", nullable = false, unique = true, length = 254)
     private String correo;
 
     @Column(name = "password", nullable = false, length = 255)
