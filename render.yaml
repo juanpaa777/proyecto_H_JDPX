@@ -35,3 +35,7 @@ services:
           property: password
       - key: SPRING_DATA_MONGODB_URI
         sync: false
+      - key: MAIL_USERNAME
+        sync: false
+      - key: MAIL_PASSWORD
+        sync: false

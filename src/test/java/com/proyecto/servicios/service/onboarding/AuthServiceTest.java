@@ -204,8 +204,7 @@ class AuthServiceTest {
 
         assertTrue(response.getRequiere2fa());
         assertNotNull(response.getDesafioId());
-        assertNotNull(response.getCodigoOtpDemo());
-        assertEquals(6, response.getCodigoOtpDemo().length());
+        assertNull(response.getCodigoOtpDemo());
         verify(codigo2faRepository).save(any(Codigo2fa.class));
 
         // Simular exceso de solicitudes (Rate limit)

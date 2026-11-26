@@ -49,9 +49,21 @@ public class AuthService {
     private final Codigo2faRepository codigo2faRepository;
     private final CuentaRepository cuentaRepository;
     private final JwtService jwtService;
+    private final Email2faService email2faService;
 
     public AuthService(UsuarioRepository usuarioRepository, PasswordEncoder passwordEncoder) {
-        this(usuarioRepository, passwordEncoder, null, null, null, null);
+        this(usuarioRepository, passwordEncoder, null, null, null, null, null);
+    }
+
+    public AuthService(
+            UsuarioRepository usuarioRepository,
+            PasswordEncoder passwordEncoder,
+            SesionActivaRepository sesionActivaRepository,
+            Codigo2faRepository codigo2faRepository,
+            CuentaRepository cuentaRepository,
+            JwtService jwtService
+    ) {
+        this(usuarioRepository, passwordEncoder, sesionActivaRepository, codigo2faRepository, cuentaRepository, jwtService, null);
     }
 
     @Autowired
@@ -61,7 +73,8 @@ public class AuthService {
             SesionActivaRepository sesionActivaRepository,
             Codigo2faRepository codigo2faRepository,
             CuentaRepository cuentaRepository,
-            JwtService jwtService
+            JwtService jwtService,
+            Email2faService email2faService
     ) {
         this.usuarioRepository = usuarioRepository;
         this.passwordEncoder = passwordEncoder;
@@ -69,6 +82,7 @@ public class AuthService {
         this.codigo2faRepository = codigo2faRepository;
         this.cuentaRepository = cuentaRepository;
         this.jwtService = jwtService;
+        this.email2faService = email2faService;
     }
 
     @Transactional
@@ -285,17 +299,27 @@ public class AuthService {
                 .map(Cliente::getId)
                 .orElse(null);
 
-        log.info("Desafío 2FA generado para {} [DesafioId: {}, OTP: {}]", usuario.getCorreo(), desafioId, codigoOtp);
+        if (email2faService != null) {
+            email2faService.enviarCodigo2fa(
+                    usuario.getCorreo(),
+                    nombreCompleto,
+                    codigoOtp,
+                    plataforma,
+                    dispositivo
+            );
+        }
+
+        log.info("Desafío 2FA generado y enviado por correo [DesafioId: {}]", desafioId);
 
         return LoginResponse.builder()
                 .requiere2fa(true)
                 .desafioId(desafioId)
-                .codigoOtpDemo(codigoOtp)
+                .codigoOtpDemo(null)
                 .expira2faSegundos(300L)
                 .clienteId(clienteId)
                 .correo(usuario.getCorreo())
                 .nombreCompleto(nombreCompleto)
-                .mensaje("Se ha enviado un código de verificación de 6 dígitos (2FA). Valídelo para activar su sesión.")
+                .mensaje("Hemos enviado un código de verificación de 6 dígitos a tu correo electrónico. Revisa tu bandeja de entrada o spam.")
                 .build();
     }
 
