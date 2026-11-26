@@ -1,5 +1,6 @@
 package com.proyecto.servicios.service.onboarding;
 
+import com.fasterxml.jackson.databind.ObjectMapper;
 import jakarta.mail.internet.MimeMessage;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -8,21 +9,37 @@ import org.springframework.mail.javamail.JavaMailSender;
 import org.springframework.mail.javamail.MimeMessageHelper;
 import org.springframework.stereotype.Service;
 
+import java.net.URI;
+import java.net.http.HttpClient;
+import java.net.http.HttpRequest;
+import java.net.http.HttpResponse;
 import java.nio.charset.StandardCharsets;
+import java.time.Duration;
+import java.util.List;
+import java.util.Map;
 
 @Service
 @Slf4j
 public class Email2faService {
 
+    private static final String BREVO_ENDPOINT = "https://api.brevo.com/v3/smtp/email";
+
     private final JavaMailSender mailSender;
     private final String remitente;
+    private final String brevoApiKey;
+    private final ObjectMapper objectMapper = new ObjectMapper();
+    private final HttpClient httpClient = HttpClient.newBuilder()
+            .connectTimeout(Duration.ofSeconds(5))
+            .build();
 
     public Email2faService(
             @Autowired(required = false) JavaMailSender mailSender,
-            @Value("${spring.mail.username:}") String remitente
+            @Value("${spring.mail.username:}") String remitente,
+            @Value("${BREVO_API_KEY:}") String brevoApiKey
     ) {
         this.mailSender = mailSender;
         this.remitente = remitente;
+        this.brevoApiKey = brevoApiKey;
     }
 
     public void enviarCodigo2fa(
@@ -32,8 +49,18 @@ public class Email2faService {
             String plataforma,
             String dispositivo
     ) {
+        String html = construirHtml2fa(nombreCompleto, codigoOtp, plataforma, dispositivo);
+        String asunto = "Tu código de verificación GestoPago (2FA)";
+
+        // 1. Prioridad: API HTTPS (puerto 443, compatible con Render Free Tier)
+        if (brevoApiKey != null && !brevoApiKey.isBlank()) {
+            enviarPorBrevoHttps(destinatario, nombreCompleto, asunto, html);
+            return;
+        }
+
+        // 2. Respaldo local: SMTP (JavaMailSender)
         if (mailSender == null || remitente == null || remitente.isBlank()) {
-            log.warn("Envío de correo 2FA omitido: MAIL_USERNAME / JavaMailSender no configurado.");
+            log.warn("Envío de correo 2FA omitido: ni BREVO_API_KEY ni MAIL_USERNAME están configurados.");
             return;
         }
 
@@ -47,14 +74,59 @@ public class Email2faService {
 
             helper.setFrom(remitente, "GestoPago Banca Digital");
             helper.setTo(destinatario);
-            helper.setSubject("Tu código de verificación GestoPago (2FA)");
-            helper.setText(construirHtml2fa(nombreCompleto, codigoOtp, plataforma, dispositivo), true);
+            helper.setSubject(asunto);
+            helper.setText(html, true);
 
             mailSender.send(message);
-            log.info("Correo de verificación 2FA enviado exitosamente.");
+            log.info("Correo de verificación 2FA enviado vía SMTP.");
         } catch (Exception e) {
-            log.error("Error al enviar el correo 2FA: {}", e.getMessage());
-            throw new IllegalStateException("No pudimos enviar el código de verificación a tu correo. Intenta nuevamente en unos segundos.");
+            log.error("Error al enviar el correo 2FA vía SMTP: {}", e.getMessage());
+            throw new IllegalStateException("No pudimos enviar el código de verificación a tu correo. Configura BREVO_API_KEY en Render (puertos SMTP bloqueados en plan gratuito).");
+        }
+    }
+
+    private void enviarPorBrevoHttps(
+            String destinatario,
+            String nombreCompleto,
+            String asunto,
+            String html
+    ) {
+        try {
+            String senderEmail = (remitente != null && !remitente.isBlank())
+                    ? remitente.trim()
+                    : "no-reply@gestopago.app";
+
+            Map<String, Object> payload = Map.of(
+                    "sender", Map.of("name", "GestoPago Banca Digital", "email", senderEmail),
+                    "to", List.of(Map.of(
+                            "email", destinatario,
+                            "name", (nombreCompleto != null && !nombreCompleto.isBlank()) ? nombreCompleto : destinatario
+                    )),
+                    "subject", asunto,
+                    "htmlContent", html
+            );
+
+            HttpRequest req = HttpRequest.newBuilder()
+                    .uri(URI.create(BREVO_ENDPOINT))
+                    .timeout(Duration.ofSeconds(8))
+                    .header("accept", "application/json")
+                    .header("content-type", "application/json")
+                    .header("api-key", brevoApiKey.trim())
+                    .POST(HttpRequest.BodyPublishers.ofString(objectMapper.writeValueAsString(payload)))
+                    .build();
+
+            HttpResponse<String> resp = httpClient.send(req, HttpResponse.BodyHandlers.ofString());
+            if (resp.statusCode() >= 200 && resp.statusCode() < 300) {
+                log.info("Correo de verificación 2FA enviado vía HTTPS (Brevo).");
+            } else {
+                log.error("Brevo respondió HTTP {}: {}", resp.statusCode(), resp.body());
+                throw new IllegalStateException("No pudimos entregar el correo 2FA en este momento. Verifica BREVO_API_KEY y el remitente.");
+            }
+        } catch (IllegalStateException ex) {
+            throw ex;
+        } catch (Exception e) {
+            log.error("Error al enviar correo 2FA vía Brevo HTTPS: {}", e.getMessage());
+            throw new IllegalStateException("Error de comunicación al enviar el código 2FA por correo.");
         }
     }
 
