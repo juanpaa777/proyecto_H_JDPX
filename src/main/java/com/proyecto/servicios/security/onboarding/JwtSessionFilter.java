@@ -53,6 +53,7 @@ public class JwtSessionFilter extends OncePerRequestFilter {
                 || path.startsWith("/api/v1/pagos-servicios")
                 || path.startsWith("/auth/mi-cuenta")
                 || path.startsWith("/auth/totp-qr")
+                || path.startsWith("/auth/totp-reset")
                 || path.startsWith("/auth/session-status");
 
         String authHeader = request.getHeader("Authorization");

@@ -439,6 +439,25 @@ public class AuthService {
                 .build();
     }
 
+    @Transactional
+    public LoginResponse regenerarTotpQrAutenticado(String authHeader) {
+        SessionStatusResponse sesion = consultarEstadoSesion(authHeader);
+        Usuario usuario = usuarioRepository.findByCorreo(sesion.getCorreo())
+                .orElseThrow(() -> new CredencialesInvalidasException("Credenciales inválidas o acceso no autorizado."));
+        usuario.setTotpSecret(totpService.generarSecretoBase32());
+        usuario.setTotpVerificado(false);
+        usuario.setTotpUltimoPaso(null);
+        usuarioRepository.save(usuario);
+        return LoginResponse.builder()
+                .requiere2fa(false)
+                .correo(usuario.getCorreo())
+                .nombreCompleto(sesion.getNombreCompleto())
+                .otpauthUri(totpService.generarOtpAuthUri(usuario.getCorreo(), usuario.getTotpSecret()))
+                .totpSecretManual(usuario.getTotpSecret())
+                .totpVinculado(false)
+                .build();
+    }
+
     @Transactional(readOnly = true)
     public ClienteResponse obtenerMiCuentaAutenticada(String authHeader) {
         SessionStatusResponse sesion = consultarEstadoSesion(authHeader);

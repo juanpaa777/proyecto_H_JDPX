@@ -68,6 +68,15 @@ public class AuthController {
         return ResponseEntity.ok(authService.obtenerTotpQrAutenticado(authHeader));
     }
 
+    @PostMapping("/totp-reset")
+    @Operation(
+            summary = "Regenerar QR y clave TOTP para vincular en otro dispositivo",
+            description = "Genera una nueva clave secreta TOTP y reinicia la vinculación de Google Authenticator para el usuario autenticado."
+    )
+    public ResponseEntity<LoginResponse> resetTotpQr(@RequestHeader(value = "Authorization", required = false) String authHeader) {
+        return ResponseEntity.ok(authService.regenerarTotpQrAutenticado(authHeader));
+    }
+
     @GetMapping("/mi-cuenta")
     @Operation(
             summary = "Obtener datos y cuentas del titular autenticado",
