@@ -119,7 +119,7 @@ class ClienteControllerTest {
                         .content(objectMapper.writeValueAsString(requestInvalido)))
                 .andExpect(status().isBadRequest())
                 .andExpect(jsonPath("$.codigo", is(1)))
-                .andExpect(jsonPath("$.mensaje", startsWith("Datos no validos:")));
+                .andExpect(jsonPath("$.mensaje", is("Los datos ingresados no son válidos. Verifica e intenta nuevamente.")));
     }
 
     @Test

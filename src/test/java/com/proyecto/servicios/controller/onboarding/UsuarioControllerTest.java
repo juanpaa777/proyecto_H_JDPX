@@ -95,10 +95,8 @@ class UsuarioControllerTest {
                         .content(objectMapper.writeValueAsString(requestInvalido)))
                 .andExpect(status().isBadRequest())
                 .andExpect(jsonPath("$.codigo", is(1)))
-                .andExpect(jsonPath("$.mensaje", startsWith("Datos no validos:")))
-                .andExpect(jsonPath("$.detalles.correo", notNullValue()))
-                .andExpect(jsonPath("$.detalles.password", notNullValue()))
-                .andExpect(jsonPath("$.detalles.clienteId", notNullValue()));
+                .andExpect(jsonPath("$.mensaje", is("Los datos ingresados no son válidos. Verifica e intenta nuevamente.")))
+                .andExpect(jsonPath("$.detalles").doesNotExist());
     }
 
     @Test
@@ -117,7 +115,7 @@ class UsuarioControllerTest {
                         .content(objectMapper.writeValueAsString(request)))
                 .andExpect(status().isConflict())
                 .andExpect(jsonPath("$.codigo", is(409)))
-                .andExpect(jsonPath("$.mensaje", containsString("usuario.duplicado@banco.com")));
+                .andExpect(jsonPath("$.mensaje", is("No fue posible completar la operación con los datos proporcionados.")));
     }
 
     @Test
@@ -170,7 +168,7 @@ class UsuarioControllerTest {
                         .content(objectMapper.writeValueAsString(request)))
                 .andExpect(status().isNotFound())
                 .andExpect(jsonPath("$.codigo", is(404)))
-                .andExpect(jsonPath("$.mensaje", containsString("999")));
+                .andExpect(jsonPath("$.mensaje", is("No se pudo completar la solicitud.")));
     }
 
     @Test

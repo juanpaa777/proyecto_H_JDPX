@@ -5,6 +5,7 @@ import com.proyecto.servicios.dto.pagos.ConciliarPagoRequest;
 import com.proyecto.servicios.dto.pagos.ConsultaPagoServicioRequest;
 import com.proyecto.servicios.dto.pagos.PagoServicioRequest;
 import com.proyecto.servicios.dto.pagos.PagoServicioResponse;
+import com.proyecto.servicios.security.onboarding.AuthenticatedClientGuard;
 import com.proyecto.servicios.service.pagos.PagoServicioService;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
@@ -49,6 +50,13 @@ public class PagoServicioController {
             description = "Endpoint único de búsqueda combinando filtros opcionales (clienteId, numeroCuenta, upc, idServicio, idProducto, estatus, fechas) mediante RequestBody."
     )
     public ResponseEntity<PaginaResponse<PagoServicioResponse>> consultarPagos(@Valid @RequestBody ConsultaPagoServicioRequest request) {
+        Long authClienteId = AuthenticatedClientGuard.obtenerClienteAutenticadoOrNull();
+        if (authClienteId != null) {
+            if (request.getClienteId() != null && !authClienteId.equals(request.getClienteId())) {
+                AuthenticatedClientGuard.verificarPropiedadCliente(request.getClienteId());
+            }
+            request.setClienteId(authClienteId);
+        }
         Page<PagoServicioResponse> pagina = pagoServicioService.consultarPagosPaginados(request);
         return ResponseEntity.ok(PaginaResponse.from(pagina));
     }

@@ -23,13 +23,22 @@ public class ClienteMapper {
         response.setApellidoPaterno(cliente.getApellidoPaterno());
         response.setApellidoMaterno(cliente.getApellidoMaterno());
 
-        StringBuilder sb = new StringBuilder(cliente.getNombre());
-        if (cliente.getSegundoNombre() != null && !cliente.getSegundoNombre().trim().isEmpty()) {
-            sb.append(" ").append(cliente.getSegundoNombre());
+        StringBuilder sb = new StringBuilder(cliente.getNombre() != null ? cliente.getNombre().trim() : "");
+        if (cliente.getSegundoNombre() != null
+                && !cliente.getSegundoNombre().trim().isEmpty()
+                && !"null".equalsIgnoreCase(cliente.getSegundoNombre().trim())) {
+            sb.append(" ").append(cliente.getSegundoNombre().trim());
         }
-        sb.append(" ").append(cliente.getApellidoPaterno());
-        sb.append(" ").append(cliente.getApellidoMaterno());
-        response.setNombreCompleto(sb.toString());
+        if (cliente.getApellidoPaterno() != null
+                && !cliente.getApellidoPaterno().trim().isEmpty()) {
+            sb.append(" ").append(cliente.getApellidoPaterno().trim());
+        }
+        if (cliente.getApellidoMaterno() != null
+                && !cliente.getApellidoMaterno().trim().isEmpty()
+                && !"null".equalsIgnoreCase(cliente.getApellidoMaterno().trim())) {
+            sb.append(" ").append(cliente.getApellidoMaterno().trim());
+        }
+        response.setNombreCompleto(sb.toString().trim());
 
         response.setFechaNacimiento(cliente.getFechaNacimiento());
         response.setCurp(cliente.getCurp());

@@ -1,9 +1,11 @@
 package com.proyecto.servicios.service.onboarding;
 
+import com.proyecto.servicios.dto.onboarding.ClienteResponse;
 import com.proyecto.servicios.dto.onboarding.LoginRequest;
 import com.proyecto.servicios.dto.onboarding.LoginResponse;
 import com.proyecto.servicios.dto.onboarding.SessionStatusResponse;
 import com.proyecto.servicios.dto.onboarding.Verify2faRequest;
+import com.proyecto.servicios.mapper.onboarding.ClienteMapper;
 import com.proyecto.servicios.entity.onboarding.Cliente;
 import com.proyecto.servicios.entity.onboarding.Codigo2fa;
 import com.proyecto.servicios.entity.onboarding.Cuenta;
@@ -415,6 +417,37 @@ public class AuthService {
                 .requiere2fa(false)
                 .mensaje("Sesión iniciada exitosamente")
                 .build();
+    }
+
+    @Transactional
+    public LoginResponse obtenerTotpQrAutenticado(String authHeader) {
+        SessionStatusResponse sesion = consultarEstadoSesion(authHeader);
+        Usuario usuario = usuarioRepository.findByCorreo(sesion.getCorreo())
+                .orElseThrow(() -> new CredencialesInvalidasException("Credenciales inválidas o acceso no autorizado."));
+        if (usuario.getTotpSecret() == null || usuario.getTotpSecret().isBlank()) {
+            usuario.setTotpSecret(totpService.generarSecretoBase32());
+            usuario.setTotpVerificado(false);
+            usuarioRepository.save(usuario);
+        }
+        return LoginResponse.builder()
+                .requiere2fa(false)
+                .correo(usuario.getCorreo())
+                .nombreCompleto(sesion.getNombreCompleto())
+                .otpauthUri(totpService.generarOtpAuthUri(usuario.getCorreo(), usuario.getTotpSecret()))
+                .totpSecretManual(usuario.getTotpSecret())
+                .totpVinculado(Boolean.TRUE.equals(usuario.getTotpVerificado()))
+                .build();
+    }
+
+    @Transactional(readOnly = true)
+    public ClienteResponse obtenerMiCuentaAutenticada(String authHeader) {
+        SessionStatusResponse sesion = consultarEstadoSesion(authHeader);
+        Usuario usuario = usuarioRepository.findByCorreo(sesion.getCorreo())
+                .orElseThrow(() -> new CredencialesInvalidasException("Credenciales inválidas o acceso no autorizado."));
+        if (usuario.getCliente() == null) {
+            throw new CredencialesInvalidasException("Credenciales inválidas o acceso no autorizado.");
+        }
+        return ClienteMapper.toResponse(usuario.getCliente());
     }
 
     private Optional<Cuenta> obtenerCuentaPrincipal(Long clienteId) {

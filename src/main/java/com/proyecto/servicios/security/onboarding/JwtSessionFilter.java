@@ -45,6 +45,16 @@ public class JwtSessionFilter extends OncePerRequestFilter {
             return;
         }
 
+        boolean rutaProtegida = path.startsWith("/cuentas")
+                || path.startsWith("/clientes/consultar")
+                || path.startsWith("/clientes/detalle")
+                || path.startsWith("/clientes/actualizar")
+                || path.startsWith("/clientes/baja")
+                || path.startsWith("/api/v1/pagos-servicios")
+                || path.startsWith("/auth/mi-cuenta")
+                || path.startsWith("/auth/totp-qr")
+                || path.startsWith("/auth/session-status");
+
         String authHeader = request.getHeader("Authorization");
         if (authHeader != null && authHeader.startsWith("Bearer ")) {
             String rawToken = authHeader.substring(7).trim();
@@ -57,19 +67,34 @@ public class JwtSessionFilter extends OncePerRequestFilter {
                             SesionActiva sesion = sesionOpt.get();
                             if (!Boolean.TRUE.equals(sesion.getActiva())
                                     || sesion.getFechaExpiracion().isBefore(LocalDateTime.now())) {
-                                writeRevokedResponse(response, "Tu sesión fue cerrada porque se inició sesión en otro dispositivo o ha expirado.");
+                                writeRevokedResponse(response, "Tu sesión ha finalizado. Inicia sesión nuevamente.");
                                 return;
                             }
                             sesion.setFechaUltimoAcceso(LocalDateTime.now());
                             sesionActivaRepository.save(sesion);
+                            if (sesion.getClienteId() != null) {
+                                request.setAttribute(AuthenticatedClientGuard.ATTR_CLIENTE_ID, sesion.getClienteId());
+                            }
+                        } else if (rutaProtegida) {
+                            writeRevokedResponse(response, "Tu sesión ha finalizado. Inicia sesión nuevamente.");
+                            return;
                         }
+                    } else if (rutaProtegida) {
+                        writeRevokedResponse(response, "Tu sesión ha finalizado. Inicia sesión nuevamente.");
+                        return;
                     }
                 } catch (Exception ex) {
                     log.warn("Token JWT inválido o expirado en filtro de sesión: {}", ex.getMessage());
-                    writeRevokedResponse(response, "Token de sesión inválido o expirado. Inicie sesión nuevamente.");
+                    writeRevokedResponse(response, "Tu sesión ha finalizado. Inicia sesión nuevamente.");
                     return;
                 }
+            } else if (rutaProtegida) {
+                writeRevokedResponse(response, "Tu sesión ha finalizado. Inicia sesión nuevamente.");
+                return;
             }
+        } else if (rutaProtegida) {
+            writeRevokedResponse(response, "Acceso no autorizado. Inicia sesión para continuar.");
+            return;
         }
 
         filterChain.doFilter(request, response);

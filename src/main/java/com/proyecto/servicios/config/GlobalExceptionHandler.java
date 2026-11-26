@@ -27,14 +27,14 @@ public class GlobalExceptionHandler {
      */
     @ExceptionHandler(MethodArgumentNotValidException.class)
     public ResponseEntity<GenericResponse> dtoValidation(MethodArgumentNotValidException ex) {
-        GenericResponse genericResponse = new GenericResponse();
         Map<String, String> listError = new HashMap<>();
         for (FieldError fieldError : ex.getBindingResult().getFieldErrors()) {
             listError.put(fieldError.getField(), fieldError.getDefaultMessage());
         }
+        log.warn("Validación DTO fallida: {}", listError);
+        GenericResponse genericResponse = new GenericResponse();
         genericResponse.setCodigo(1);
-        genericResponse.setMensaje("Datos no validos: " + listError);
-        genericResponse.setDetalles(listError);
+        genericResponse.setMensaje("Los datos ingresados no son válidos. Verifica e intenta nuevamente.");
         return new ResponseEntity<>(genericResponse, HttpStatus.BAD_REQUEST);
     }
 
@@ -46,7 +46,10 @@ public class GlobalExceptionHandler {
     })
     public ResponseEntity<GenericResponse> handleNotFoundResourceException(RuntimeException ex) {
         log.warn("Recurso no encontrado o no válido: {}", ex.getMessage());
-        GenericResponse response = new GenericResponse(HttpStatus.NOT_FOUND.value(), ex.getMessage());
+        GenericResponse response = new GenericResponse(
+                HttpStatus.NOT_FOUND.value(),
+                "No se pudo completar la solicitud."
+        );
         return ResponseEntity.status(HttpStatus.NOT_FOUND).body(response);
     }
 
@@ -58,21 +61,30 @@ public class GlobalExceptionHandler {
     })
     public ResponseEntity<GenericResponse> handleDuplicateResourceException(RuntimeException ex) {
         log.warn("Conflicto de unicidad o duplicidad: {}", ex.getMessage());
-        GenericResponse response = new GenericResponse(HttpStatus.CONFLICT.value(), ex.getMessage());
+        GenericResponse response = new GenericResponse(
+                HttpStatus.CONFLICT.value(),
+                "No fue posible completar la operación con los datos proporcionados."
+        );
         return ResponseEntity.status(HttpStatus.CONFLICT).body(response);
     }
 
     @ExceptionHandler(UsuarioInactivoException.class)
     public ResponseEntity<GenericResponse> handleInactiveUser(UsuarioInactivoException ex) {
         log.warn("Acceso restringido por estatus inactivo: {}", ex.getMessage());
-        GenericResponse response = new GenericResponse(HttpStatus.FORBIDDEN.value(), ex.getMessage());
+        GenericResponse response = new GenericResponse(
+                HttpStatus.FORBIDDEN.value(),
+                "Credenciales inválidas o acceso no autorizado."
+        );
         return ResponseEntity.status(HttpStatus.FORBIDDEN).body(response);
     }
 
     @ExceptionHandler(CredencialesInvalidasException.class)
     public ResponseEntity<GenericResponse> handleInvalidCredentials(CredencialesInvalidasException ex) {
         log.warn("Fallo de autenticación: {}", ex.getMessage());
-        GenericResponse response = new GenericResponse(HttpStatus.UNAUTHORIZED.value(), ex.getMessage());
+        GenericResponse response = new GenericResponse(
+                HttpStatus.UNAUTHORIZED.value(),
+                "Credenciales inválidas o acceso no autorizado."
+        );
         return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body(response);
     }
 
@@ -95,7 +107,11 @@ public class GlobalExceptionHandler {
         Map<String, String> detalles = Map.of(
                 "codigoError", ex.getCodigoError() != null ? ex.getCodigoError() : "SESSION_REVOKED"
         );
-        GenericResponse response = new GenericResponse(HttpStatus.UNAUTHORIZED.value(), ex.getMessage(), detalles);
+        GenericResponse response = new GenericResponse(
+                HttpStatus.UNAUTHORIZED.value(),
+                "Tu sesión ha finalizado. Inicia sesión nuevamente.",
+                detalles
+        );
         return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body(response);
     }
 
@@ -107,7 +123,10 @@ public class GlobalExceptionHandler {
     })
     public ResponseEntity<GenericResponse> handleBadRequestBusinessExceptions(RuntimeException ex) {
         log.warn("Regla de negocio no cumplida: {}", ex.getMessage());
-        GenericResponse response = new GenericResponse(HttpStatus.BAD_REQUEST.value(), ex.getMessage());
+        GenericResponse response = new GenericResponse(
+                HttpStatus.BAD_REQUEST.value(),
+                "No se pudo procesar la solicitud. Verifica tus datos."
+        );
         return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(response);
     }
 
@@ -117,7 +136,10 @@ public class GlobalExceptionHandler {
     })
     public ResponseEntity<GenericResponse> handleUnprocessableOperationExceptions(RuntimeException ex) {
         log.warn("Operación financiera rechazada: {}", ex.getMessage());
-        GenericResponse response = new GenericResponse(HttpStatus.UNPROCESSABLE_ENTITY.value(), ex.getMessage());
+        GenericResponse response = new GenericResponse(
+                HttpStatus.UNPROCESSABLE_ENTITY.value(),
+                "No fue posible completar la operación."
+        );
         return ResponseEntity.status(HttpStatus.UNPROCESSABLE_ENTITY).body(response);
     }
 
@@ -127,11 +149,11 @@ public class GlobalExceptionHandler {
         Map<String, String> detalles = Map.of(
                 "upc", ex.getUpc(),
                 "estatus", "PENDIENTE_CONCILIACION",
-                "accionRecomendada", "Ejecute el endpoint de conciliación (/api/v1/pagos-servicios/conciliar) después de 62 segundos para verificar si el cargo fue aplicado por el proveedor."
+                "accionRecomendada", "Verifica el estado de la operación antes de reintentar."
         );
         GenericResponse response = new GenericResponse(
                 HttpStatus.GATEWAY_TIMEOUT.value(),
-                ex.getMessage(),
+                "La operación está en proceso de verificación. Consulta el estado antes de reintentar.",
                 detalles
         );
         return ResponseEntity.status(HttpStatus.GATEWAY_TIMEOUT).body(response);
@@ -139,9 +161,10 @@ public class GlobalExceptionHandler {
 
     @ExceptionHandler(NoResourceFoundException.class)
     public ResponseEntity<GenericResponse> handleNoResourceFound(NoResourceFoundException ex) {
+        log.warn("Recurso no encontrado: {}", ex.getResourcePath());
         GenericResponse response = new GenericResponse(
                 HttpStatus.NOT_FOUND.value(),
-                "Recurso no encontrado: " + ex.getResourcePath()
+                "Recurso no disponible."
         );
         return ResponseEntity.status(HttpStatus.NOT_FOUND).body(response);
     }
@@ -155,7 +178,7 @@ public class GlobalExceptionHandler {
         log.error("Excepción de persistencia capturada en servidor: {}", ex.getMessage());
         GenericResponse response = new GenericResponse(
                 HttpStatus.SERVICE_UNAVAILABLE.value(),
-                "No fue posible completar la operación en la base de datos. Intente más tarde."
+                "Servicio temporalmente no disponible. Intenta más tarde."
         );
         return ResponseEntity.status(HttpStatus.SERVICE_UNAVAILABLE).body(response);
     }
@@ -169,7 +192,7 @@ public class GlobalExceptionHandler {
         log.error("Error no controlado capturado en el servidor: {}", ex.getMessage(), ex);
         GenericResponse response = new GenericResponse(
                 HttpStatus.INTERNAL_SERVER_ERROR.value(),
-                "Ocurrió un error inesperado al procesar la solicitud. Contacte a soporte si el problema persiste."
+                "Ocurrió un error al procesar la solicitud. Intenta más tarde."
         );
         return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(response);
     }

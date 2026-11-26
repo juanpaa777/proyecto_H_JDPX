@@ -1,5 +1,6 @@
 package com.proyecto.servicios.controller.onboarding;
 
+import com.proyecto.servicios.dto.onboarding.ClienteResponse;
 import com.proyecto.servicios.dto.onboarding.LoginRequest;
 import com.proyecto.servicios.dto.onboarding.LoginResponse;
 import com.proyecto.servicios.dto.onboarding.SessionStatusResponse;
@@ -56,5 +57,23 @@ public class AuthController {
     )
     public ResponseEntity<SessionStatusResponse> sessionStatus(@RequestHeader(value = "Authorization", required = false) String authHeader) {
         return ResponseEntity.ok(authService.consultarEstadoSesion(authHeader));
+    }
+
+    @GetMapping("/totp-qr")
+    @Operation(
+            summary = "Obtener QR y clave TOTP para vincular Google Authenticator",
+            description = "Devuelve el URI otpauth y clave manual del usuario autenticado para vincular o recuperar Google Authenticator."
+    )
+    public ResponseEntity<LoginResponse> getTotpQr(@RequestHeader(value = "Authorization", required = false) String authHeader) {
+        return ResponseEntity.ok(authService.obtenerTotpQrAutenticado(authHeader));
+    }
+
+    @GetMapping("/mi-cuenta")
+    @Operation(
+            summary = "Obtener datos y cuentas del titular autenticado",
+            description = "Devuelve únicamente la información y cuentas bancarias del cliente asociado al JWT activo."
+    )
+    public ResponseEntity<ClienteResponse> getMiCuenta(@RequestHeader(value = "Authorization", required = false) String authHeader) {
+        return ResponseEntity.ok(authService.obtenerMiCuentaAutenticada(authHeader));
     }
 }

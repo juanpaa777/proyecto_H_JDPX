@@ -1,6 +1,7 @@
 package com.proyecto.servicios.controller.onboarding;
 
 import com.proyecto.servicios.dto.onboarding.*;
+import com.proyecto.servicios.security.onboarding.AuthenticatedClientGuard;
 import com.proyecto.servicios.service.onboarding.ClienteService;
 import com.proyecto.servicios.service.onboarding.OnboardingService;
 import com.proyecto.servicios.service.onboarding.RegistroConsultaService;
@@ -55,6 +56,10 @@ public class ClienteController {
     @PostMapping("/consultar")
     @Operation(summary = "Consultar clientes con filtros combinables y paginación", description = "Único endpoint de consulta combinando criterios (id, nombres, curp, rfc, correo, activo, fechas) y paginación mediante RequestBody")
     public ResponseEntity<PaginaResponse<ClienteResponse>> consultarClientes(@Valid @RequestBody ConsultaClienteRequest request) {
+        Long authClienteId = AuthenticatedClientGuard.obtenerClienteAutenticadoOrNull();
+        if (authClienteId != null) {
+            request.setId(authClienteId);
+        }
         Page<ClienteResponse> pagina = clienteService.buscarClientesPaginados(request);
         return ResponseEntity.ok(PaginaResponse.from(pagina));
     }
@@ -62,18 +67,28 @@ public class ClienteController {
     @PostMapping("/detalle")
     @Operation(summary = "Consultar detalle de un cliente", description = "Retorna el cliente por ID, CURP, RFC o número de cuenta enviado en RequestBody")
     public ResponseEntity<ClienteResponse> consultarDetalle(@Valid @RequestBody DetalleClienteRequest request) {
+        Long authClienteId = AuthenticatedClientGuard.obtenerClienteAutenticadoOrNull();
+        if (authClienteId != null) {
+            if (request.getId() != null) {
+                AuthenticatedClientGuard.verificarPropiedadCliente(request.getId());
+            } else {
+                request.setId(authClienteId);
+            }
+        }
         return ResponseEntity.ok(clienteService.obtenerClienteDetalle(request));
     }
 
     @PutMapping("/actualizar")
     @Operation(summary = "Actualizar parcialmente la información de un cliente", description = "Modifica datos personales, contacto, domicilio o laborales. Bloquea modificación de CURP, RFC y Cuenta.")
     public ResponseEntity<ClienteResponse> actualizarCliente(@Valid @RequestBody ClienteUpdateRequest request) {
+        AuthenticatedClientGuard.verificarPropiedadCliente(request.getId());
         return ResponseEntity.ok(clienteService.actualizarClienteParcial(request));
     }
 
     @PutMapping("/baja")
     @Operation(summary = "Baja lógica de un cliente", description = "Desactiva en cascada al cliente, sus cuentas y su usuario sin borrar datos físicos")
     public ResponseEntity<ClienteResponse> bajaLogica(@Valid @RequestBody EliminaClienteRequest request) {
+        AuthenticatedClientGuard.verificarPropiedadCliente(request.getId());
         return ResponseEntity.ok(clienteService.darDeBajaClienteLogica(request));
     }
 }

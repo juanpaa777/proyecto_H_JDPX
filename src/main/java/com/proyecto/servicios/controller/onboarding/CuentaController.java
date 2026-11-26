@@ -1,6 +1,7 @@
 package com.proyecto.servicios.controller.onboarding;
 
 import com.proyecto.servicios.dto.onboarding.*;
+import com.proyecto.servicios.security.onboarding.AuthenticatedClientGuard;
 import com.proyecto.servicios.service.onboarding.CuentaService;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
@@ -22,6 +23,7 @@ public class CuentaController {
     @PostMapping("/crear")
     @Operation(summary = "Crear una cuenta asociada a un cliente", description = "Genera una nueva cuenta bancaria para un cliente activo existente mediante RequestBody")
     public ResponseEntity<CuentaResponse> crearCuenta(@Valid @RequestBody CuentaCreateRequest request) {
+        AuthenticatedClientGuard.verificarPropiedadCliente(request.getClienteId());
         CuentaResponse response = cuentaService.crearCuentaBancaria(request);
         return ResponseEntity.status(HttpStatus.CREATED).body(response);
     }
@@ -29,6 +31,13 @@ public class CuentaController {
     @PostMapping("/consultar")
     @Operation(summary = "Consultar cuentas con paginación y filtros", description = "Único endpoint para consultar cuentas por clienteId o estatus con paginación mediante RequestBody")
     public ResponseEntity<PaginaResponse<CuentaResponse>> consultarCuentas(@Valid @RequestBody ConsultaCuentaRequest request) {
+        Long authClienteId = AuthenticatedClientGuard.obtenerClienteAutenticadoOrNull();
+        if (authClienteId != null) {
+            if (request.getClienteId() != null && !authClienteId.equals(request.getClienteId())) {
+                AuthenticatedClientGuard.verificarPropiedadCliente(request.getClienteId());
+            }
+            request.setClienteId(authClienteId);
+        }
         Page<CuentaResponse> pagina = cuentaService.listarCuentasPaginadas(request);
         return ResponseEntity.ok(PaginaResponse.from(pagina));
     }
