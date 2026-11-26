@@ -50,9 +50,10 @@ public class AuthService {
     private final CuentaRepository cuentaRepository;
     private final JwtService jwtService;
     private final Email2faService email2faService;
+    private final TotpService totpService;
 
     public AuthService(UsuarioRepository usuarioRepository, PasswordEncoder passwordEncoder) {
-        this(usuarioRepository, passwordEncoder, null, null, null, null, null);
+        this(usuarioRepository, passwordEncoder, null, null, null, null, null, new TotpService());
     }
 
     public AuthService(
@@ -63,7 +64,19 @@ public class AuthService {
             CuentaRepository cuentaRepository,
             JwtService jwtService
     ) {
-        this(usuarioRepository, passwordEncoder, sesionActivaRepository, codigo2faRepository, cuentaRepository, jwtService, null);
+        this(usuarioRepository, passwordEncoder, sesionActivaRepository, codigo2faRepository, cuentaRepository, jwtService, null, new TotpService());
+    }
+
+    public AuthService(
+            UsuarioRepository usuarioRepository,
+            PasswordEncoder passwordEncoder,
+            SesionActivaRepository sesionActivaRepository,
+            Codigo2faRepository codigo2faRepository,
+            CuentaRepository cuentaRepository,
+            JwtService jwtService,
+            Email2faService email2faService
+    ) {
+        this(usuarioRepository, passwordEncoder, sesionActivaRepository, codigo2faRepository, cuentaRepository, jwtService, email2faService, new TotpService());
     }
 
     @Autowired
@@ -74,7 +87,8 @@ public class AuthService {
             Codigo2faRepository codigo2faRepository,
             CuentaRepository cuentaRepository,
             JwtService jwtService,
-            Email2faService email2faService
+            Email2faService email2faService,
+            TotpService totpService
     ) {
         this.usuarioRepository = usuarioRepository;
         this.passwordEncoder = passwordEncoder;
@@ -83,6 +97,7 @@ public class AuthService {
         this.cuentaRepository = cuentaRepository;
         this.jwtService = jwtService;
         this.email2faService = email2faService;
+        this.totpService = totpService != null ? totpService : new TotpService();
     }
 
     @Transactional
@@ -159,22 +174,33 @@ public class AuthService {
             throw new CredencialesInvalidasException("Ha superado el máximo de 3 intentos fallidos. El código fue bloqueado.");
         }
 
-        if (!passwordEncoder.matches(request.getCodigoOtp().trim(), desafio.getCodigoHash())) {
+        Usuario usuario = usuarioRepository.findById(desafio.getUsuarioId())
+                .orElseThrow(() -> new CredencialesInvalidasException("Usuario asociado al desafío no encontrado."));
+
+        String codigoIngresado = request.getCodigoOtp() != null ? request.getCodigoOtp().trim() : "";
+        Optional<Long> pasoValido = totpService.verificarCodigo(
+                usuario.getTotpSecret(),
+                codigoIngresado,
+                usuario.getTotpUltimoPaso()
+        );
+
+        if (pasoValido.isEmpty()) {
             int nuevosIntentos = desafio.getIntentosFallidos() + 1;
             desafio.setIntentosFallidos(nuevosIntentos);
             codigo2faRepository.save(desafio);
             int restantes = Math.max(0, MAX_INTENTOS_2FA - nuevosIntentos);
             throw new CredencialesInvalidasException(
-                    "Código de verificación 2FA incorrecto. Intentos restantes: " + restantes
+                    "Código de Google Authenticator incorrecto o ya utilizado. Intentos restantes: " + restantes
             );
         }
-
-        Usuario usuario = usuarioRepository.findById(desafio.getUsuarioId())
-                .orElseThrow(() -> new CredencialesInvalidasException("Usuario asociado al desafío no encontrado."));
 
         boolean forzar = Boolean.TRUE.equals(desafio.getForzarCierrePrevia())
                 || Boolean.TRUE.equals(request.getForzarCierreSesionPrevia());
         verificarConflictoSesionActiva(usuario.getId(), forzar);
+
+        usuario.setTotpVerificado(true);
+        usuario.setTotpUltimoPaso(pasoValido.get());
+        usuarioRepository.save(usuario);
 
         desafio.setUsado(true);
         codigo2faRepository.save(desafio);
@@ -273,13 +299,18 @@ public class AuthService {
             throw new ValidacionNegocioException("Demasiadas solicitudes de código 2FA. Por seguridad, espere 5 minutos antes de intentar nuevamente.");
         }
 
-        String codigoOtp = String.format("%06d", SECURE_RANDOM.nextInt(1_000_000));
+        if (usuario.getTotpSecret() == null || usuario.getTotpSecret().isBlank()) {
+            usuario.setTotpSecret(totpService.generarSecretoBase32());
+            usuario.setTotpVerificado(false);
+            usuarioRepository.save(usuario);
+        }
+
         String desafioId = UUID.randomUUID().toString();
 
         Codigo2fa nuevoCodigo = Codigo2fa.builder()
                 .usuarioId(usuario.getId())
                 .desafioId(desafioId)
-                .codigoHash(passwordEncoder.encode(codigoOtp))
+                .codigoHash(passwordEncoder.encode("TOTP"))
                 .plataforma(plataforma)
                 .dispositivoInfo(dispositivo)
                 .intentosFallidos(0)
@@ -299,17 +330,16 @@ public class AuthService {
                 .map(Cliente::getId)
                 .orElse(null);
 
-        if (email2faService != null) {
-            email2faService.enviarCodigo2fa(
-                    usuario.getCorreo(),
-                    nombreCompleto,
-                    codigoOtp,
-                    plataforma,
-                    dispositivo
-            );
-        }
+        boolean yaVinculado = Boolean.TRUE.equals(usuario.getTotpVerificado());
+        String otpauthUri = yaVinculado
+                ? null
+                : totpService.generarOtpAuthUri(usuario.getCorreo(), usuario.getTotpSecret());
+        String totpSecretManual = yaVinculado ? null : usuario.getTotpSecret();
+        String mensaje = yaVinculado
+                ? "Ingresa el código de 6 dígitos generado por Google Authenticator."
+                : "Escanea el código QR con Google Authenticator e ingresa el código de 6 dígitos para vincular tu cuenta.";
 
-        log.info("Desafío 2FA generado y enviado por correo [DesafioId: {}]", desafioId);
+        log.info("Desafío 2FA TOTP generado [DesafioId: {}, Vinculado: {}]", desafioId, yaVinculado);
 
         return LoginResponse.builder()
                 .requiere2fa(true)
@@ -319,7 +349,10 @@ public class AuthService {
                 .clienteId(clienteId)
                 .correo(usuario.getCorreo())
                 .nombreCompleto(nombreCompleto)
-                .mensaje("Hemos enviado un código de verificación de 6 dígitos a tu correo electrónico. Revisa tu bandeja de entrada o spam.")
+                .otpauthUri(otpauthUri)
+                .totpSecretManual(totpSecretManual)
+                .totpVinculado(yaVinculado)
+                .mensaje(mensaje)
                 .build();
     }
 

@@ -205,6 +205,10 @@ class AuthServiceTest {
         assertTrue(response.getRequiere2fa());
         assertNotNull(response.getDesafioId());
         assertNull(response.getCodigoOtpDemo());
+        assertNotNull(response.getOtpauthUri());
+        assertTrue(response.getOtpauthUri().startsWith("otpauth://totp/"));
+        assertNotNull(response.getTotpSecretManual());
+        assertFalse(Boolean.TRUE.equals(response.getTotpVinculado()));
         verify(codigo2faRepository).save(any(Codigo2fa.class));
 
         // Simular exceso de solicitudes (Rate limit)
@@ -241,8 +245,13 @@ class AuthServiceTest {
                 .fechaExpiracion(LocalDateTime.now().plusHours(20))
                 .build();
 
+        TotpService totpHelper = new TotpService();
+        String secreto = totpHelper.generarSecretoBase32();
+        usuario.setTotpSecret(secreto);
+        usuario.setTotpVerificado(false);
+        String codigoTotpActual = totpHelper.generarCodigoActual(secreto);
+
         when(codigo2faRepository.findByDesafioId("desafio-uuid-1")).thenReturn(Optional.of(desafio));
-        when(passwordEncoder.matches("123456", "$2a$12$otpHash")).thenReturn(true);
         when(usuarioRepository.findById(1L)).thenReturn(Optional.of(usuario));
         when(sesionActivaRepository.findByUsuarioIdAndActivaTrue(1L)).thenReturn(List.of(sesionAnterior));
         when(jwtService.generateToken(eq(10L), eq("ana.martinez@banco.com"), anyString(), anyString())).thenReturn("jwt-2fa-ok");
@@ -250,7 +259,7 @@ class AuthServiceTest {
 
         Verify2faRequest verifyRequest = Verify2faRequest.builder()
                 .desafioId("desafio-uuid-1")
-                .codigoOtp("123456")
+                .codigoOtp(codigoTotpActual)
                 .forzarCierreSesionPrevia(true)
                 .build();
 
@@ -258,6 +267,11 @@ class AuthServiceTest {
 
         assertNotNull(response);
         assertFalse(response.getRequiere2fa());
+        assertTrue(Boolean.TRUE.equals(usuario.getTotpVerificado()));
+        assertNotNull(usuario.getTotpUltimoPaso());
+
+        // Verificar protección contra reuso en la misma ventana de 30s (replay)
+        assertTrue(totpHelper.verificarCodigo(secreto, codigoTotpActual, usuario.getTotpUltimoPaso()).isEmpty());
         assertEquals("jwt-2fa-ok", response.getToken());
         assertTrue(desafio.getUsado());
         assertFalse(sesionAnterior.getActiva());
@@ -279,8 +293,9 @@ class AuthServiceTest {
                 .fechaExpiracion(LocalDateTime.now().plusMinutes(5))
                 .build();
 
+        usuario.setTotpSecret(new TotpService().generarSecretoBase32());
         when(codigo2faRepository.findByDesafioId("desafio-uuid-2")).thenReturn(Optional.of(desafio));
-        when(passwordEncoder.matches("000000", "$2a$12$otpHash")).thenReturn(false);
+        when(usuarioRepository.findById(1L)).thenReturn(Optional.of(usuario));
 
         Verify2faRequest badReq = new Verify2faRequest("desafio-uuid-2", "000000", false);
         assertThrows(CredencialesInvalidasException.class, () -> authService.verificarCodigo2fa(badReq));

@@ -30,6 +30,9 @@ public class LoginResponse {
     private String codigoOtpDemo;
     private Long expira2faSegundos;
     private String mensaje;
+    private String otpauthUri;
+    private String totpSecretManual;
+    private Boolean totpVinculado;
 
     public LoginResponse(String token, Long expiresIn, Long clienteId, String correo, String nombreCompleto) {
         this.token = token;

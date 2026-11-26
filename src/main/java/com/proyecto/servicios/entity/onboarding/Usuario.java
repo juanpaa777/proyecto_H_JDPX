@@ -38,6 +38,17 @@ public class Usuario {
     @Column(name = "activo", nullable = false)
     private Boolean activo = true;
 
+    @Column(name = "totp_secret", length = 64)
+    @JsonIgnore
+    private String totpSecret;
+
+    @Column(name = "totp_verificado", nullable = false)
+    private Boolean totpVerificado = false;
+
+    @Column(name = "totp_ultimo_paso")
+    @JsonIgnore
+    private Long totpUltimoPaso;
+
     @Column(name = "fecha_creacion", nullable = false, updatable = false)
     private LocalDateTime fechaCreacion;
 
