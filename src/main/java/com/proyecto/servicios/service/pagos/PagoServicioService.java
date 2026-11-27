@@ -83,8 +83,8 @@ public class PagoServicioService {
     @Value("${gestopago.tx.api-key:YSX1HpAFum4TpCecyFBxs4eIjAlbhKqK6fpcSQp8}")
     private String apiKey;
 
-    @Value("${gestopago.tx.fallback-on-origin-restriction:true}")
-    private boolean fallbackOnOriginRestriction = true;
+    @Value("${gestopago.tx.fallback-on-origin-restriction:false}")
+    private boolean fallbackOnOriginRestriction = false;
 
     /**
      * Ejecuta el flujo completo de pago de servicio o recarga:
@@ -543,16 +543,30 @@ public class PagoServicioService {
             return toResponse(registroPago);
         }
 
-        // Caso 3: Cualquier código distinto de "01" -> Rechazo sin descontar saldo
-        Optional.of(codigo)
-                .filter(c -> !"01".equals(c))
-                .ifPresent(c -> {
-                    registroPago.setEstatus("RECHAZADA");
-                    registroPago.setCodigoRespuesta(c);
-                    registroPago.setMensajeRespuesta(texto);
-                    pagoServicioRepository.save(registroPago);
-                    throw new PagoRechazadoProveedorException(c, "Pago rechazado por el proveedor [Código " + c + "]: " + texto);
-                });
+        // Caso 3: Cualquier código distinto de "01" -> Pago fallido sin descontar saldo, guardado en categoría FALLIDOS con el número exacto de GestoPago (-1 / 0)
+        if (!"01".equals(codigo)) {
+            String numAutReal = Optional.ofNullable(parsedResponse.getNumAutorizacion())
+                    .map(String::trim)
+                    .filter(Predicate.not(String::isEmpty))
+                    .orElse("0");
+            String idTxReal = Optional.ofNullable(parsedResponse.getIdTx())
+                    .filter(Predicate.not(String::isBlank))
+                    .orElseGet(() -> Optional.ofNullable(msg.getIdTx()).orElse(null));
+
+            BigDecimal saldoActual = cuenta.getSaldo();
+            registroPago.setSaldoAnterior(saldoActual);
+            registroPago.setSaldoPosterior(saldoActual);
+            registroPago.setEstatus("FALLIDOS");
+            registroPago.setCodigoRespuesta(codigo);
+            registroPago.setMensajeRespuesta(texto);
+            registroPago.setIdTxGestopago(idTxReal);
+            registroPago.setNumAutorizacion(numAutReal);
+            pagoServicioRepository.save(registroPago);
+
+            log.warn("Pago FALLIDO en GestoPago [Código {}: {}]. NumAutorizacion: {}, UPC: {}, Saldo intacto: ${}",
+                    codigo, texto, numAutReal, registroPago.getUpc(), saldoActual);
+            return toResponse(registroPago);
+        }
 
         // Caso 4: Código "01" -> ÉXITO: Descontar el saldo de la cuenta del cliente y confirmar transacción
         aplicarDescuentoYConfirmar(cuenta, registroPago, parsedResponse, codigo, texto);
@@ -582,8 +596,12 @@ public class PagoServicioService {
         registroPago.setEstatus("EXITOSA");
         registroPago.setCodigoRespuesta(codigo);
         registroPago.setMensajeRespuesta(texto);
+        String numAut = Optional.ofNullable(parsedResponse.getNumAutorizacion())
+                .map(String::trim)
+                .filter(Predicate.not(String::isEmpty))
+                .orElse("1");
         registroPago.setIdTxGestopago(idTx);
-        registroPago.setNumAutorizacion(parsedResponse.getNumAutorizacion());
+        registroPago.setNumAutorizacion(numAut);
         registroPago.setComision(parseBigDecimalSeguro(parsedResponse.getComision()));
         registroPago.setPin(Optional.ofNullable(msg.getPin()).map(String::trim).filter(Predicate.not(String::isEmpty)).orElse(null));
         registroPago.setLeyenda(Optional.ofNullable(msg.getLegend()).map(String::trim).filter(Predicate.not(String::isEmpty)).orElse(null));

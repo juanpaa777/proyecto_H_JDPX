@@ -155,7 +155,7 @@ class PagoServicioServiceTest {
     }
 
     @Test
-    @DisplayName("Código distinto de 01 en sendTx.do: NO debe descontar el saldo de la cuenta y debe lanzar PagoRechazadoProveedorException")
+    @DisplayName("Código distinto de 01 en sendTx.do: NO debe descontar el saldo, debe guardar en FALLIDOS con numAutorizacion exacto (-1)")
     void noDebeDescontarSaldoCuandoCodigoNoEs01() {
         PagoServicioRequest request = PagoServicioRequest.builder()
                 .numeroCuenta("4028193847")
@@ -185,8 +185,11 @@ class PagoServicioServiceTest {
         when(gestoPagoTxClient.sendTx(anyString(), anyString(), anyString())).thenReturn(xmlError);
         when(xmlSerializationService.deserializeFromXml(xmlError, SendTxXmlResponse.class)).thenReturn(parsed);
 
-        assertThrows(PagoRechazadoProveedorException.class, () -> pagoServicioService.procesarPagoServicio(request));
+        PagoServicioResponse res = pagoServicioService.procesarPagoServicio(request);
 
+        assertEquals("FALLIDOS", res.getEstatus());
+        assertEquals("-1", res.getNumAutorizacion());
+        assertEquals(new BigDecimal("1000.00"), res.getSaldoPosterior());
         // El saldo del cliente debe permanecer intacto en $1000.00
         assertEquals(new BigDecimal("1000.00"), cuentaActiva.getSaldo());
         verify(cuentaRepository, never()).save(cuentaActiva);
