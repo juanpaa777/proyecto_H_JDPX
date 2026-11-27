@@ -394,7 +394,7 @@ public class PagoServicioService {
     }
 
     private String generarUpcUnico() {
-        String prefijo = "GP" + idDistribuidorDefault + "_";
+        String prefijo = "GP" + idDistribuidorDefault;
         int longitudAleatoria = Math.max(4, Math.min(8, 15 - prefijo.length()));
         String candidato = prefijo + RandomStringUtils.randomAlphanumeric(longitudAleatoria).toUpperCase();
         return Optional.of(candidato)
