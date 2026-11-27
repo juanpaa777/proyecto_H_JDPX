@@ -21,16 +21,19 @@ import com.proyecto.servicios.model.gestopago.xml.MensajeXml;
 import com.proyecto.servicios.model.gestopago.xml.SendTxXmlResponse;
 import com.proyecto.servicios.repositorys.mongo.ProductoMongoRepository;
 import com.proyecto.servicios.repositorys.onboarding.CuentaRepository;
+import com.proyecto.servicios.repositorys.onboarding.UsuarioRepository;
 import com.proyecto.servicios.repositorys.pagos.PagoServicioRepository;
 import com.proyecto.servicios.repositorys.pagos.specification.PagoServicioSpecification;
 import com.proyecto.servicios.security.pagos.GestoPagoAesService;
 import com.proyecto.servicios.service.GestoPagoTokenService;
 import com.proyecto.servicios.service.XmlSerializationService;
+import com.proyecto.servicios.service.onboarding.TotpService;
 import feign.FeignException;
 import feign.RetryableException;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.commons.lang3.RandomStringUtils;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
@@ -70,6 +73,15 @@ public class PagoServicioService {
     private final XmlSerializationService xmlSerializationService;
     private final PasswordEncoder passwordEncoder;
     private final Gson gson = new Gson();
+
+    @Autowired(required = false)
+    private TotpService totpService = new TotpService();
+
+    @Autowired(required = false)
+    private UsuarioRepository usuarioRepository;
+
+    @Autowired(required = false)
+    private TicketEmailService ticketEmailService;
 
     @Value("${gestopago.auth.id-distribuidor:83}")
     private Integer idDistribuidorDefault;
@@ -116,17 +128,35 @@ public class PagoServicioService {
                 .filter(c -> Boolean.TRUE.equals(c.getActivo()))
                 .orElseThrow(() -> new UsuarioInactivoException("El cliente titular de la cuenta se encuentra inactivo"));
 
-        // 2. Validar Usuario activo y contraseña/PIN seguro con BCrypt
+        // 2. Validar Usuario activo y autorización mediante 2FA (Google Authenticator) o PIN legado
         Usuario usuario = Optional.ofNullable(cliente.getUsuario())
                 .filter(u -> Boolean.TRUE.equals(u.getActivo()))
                 .orElseThrow(() -> new UsuarioInactivoException("El usuario asociado a la cuenta se encuentra inactivo"));
 
-        Optional.of(request.getPin())
-                .filter(pin -> !passwordEncoder.matches(pin, usuario.getPassword()))
-                .ifPresent(pin -> {
-                    log.warn("Autorización rechazada para pago en cuenta {}: PIN/contraseña incorrecta", cuenta.getNumeroCuenta());
-                    throw new CredencialesInvalidasException("Credenciales de autorización inválidas. Verifique su contraseña o PIN.");
-                });
+        String codigo2fa = request.getCodigo2fa() != null ? request.getCodigo2fa().trim() : "";
+        if (!codigo2fa.isEmpty()) {
+            TotpService verifier = totpService != null ? totpService : new TotpService();
+            Optional<Long> pasoValido = verifier.verificarCodigo(
+                    usuario.getTotpSecret(),
+                    codigo2fa,
+                    usuario.getTotpUltimoPaso()
+            );
+            if (pasoValido.isEmpty()) {
+                log.warn("Autorización rechazada para pago en cuenta {}: código 2FA incorrecto o ya usado", cuenta.getNumeroCuenta());
+                throw new CredencialesInvalidasException("Código de Google Authenticator (2FA) incorrecto o ya utilizado.");
+            }
+            usuario.setTotpUltimoPaso(pasoValido.get());
+            if (usuarioRepository != null) {
+                usuarioRepository.save(usuario);
+            }
+        } else if (request.getPin() != null && !request.getPin().isBlank()) {
+            if (!passwordEncoder.matches(request.getPin(), usuario.getPassword())) {
+                log.warn("Autorización rechazada para pago en cuenta {}: PIN incorrecto", cuenta.getNumeroCuenta());
+                throw new CredencialesInvalidasException("Credenciales de autorización inválidas.");
+            }
+        } else {
+            throw new CredencialesInvalidasException("Se requiere el código de 6 dígitos de Google Authenticator (2FA) para autorizar el pago.");
+        }
 
         // 3. Validar Producto, Servicio y Monto contra el catálogo de MongoDB
         ProductoDocument producto = productoMongoRepository.findByIdProducto(request.getIdProducto())
@@ -571,11 +601,13 @@ public class PagoServicioService {
 
             log.warn("Pago FALLIDO en GestoPago [Código {}: {}]. NumAutorizacion: {}, UPC: {}, Saldo intacto: ${}",
                     codigo, truncar(texto, 160), numAutReal, registroPago.getUpc(), saldoActual);
+            enviarTicketAsync(registroPago);
             return toResponse(registroPago);
         }
 
         // Caso 4: Código "01" -> ÉXITO: Descontar el saldo de la cuenta del cliente y confirmar transacción
         aplicarDescuentoYConfirmar(cuenta, registroPago, parsedResponse, codigo, texto);
+        enviarTicketAsync(registroPago);
         return toResponse(registroPago);
     }
 
@@ -618,6 +650,37 @@ public class PagoServicioService {
         pagoServicioRepository.save(registroPago);
         log.info("Pago de servicio EXITOSO [Código 01]. UPC: {}, Cuenta: {}, Monto descontado: ${}, Nuevo saldo: ${}",
                 registroPago.getUpc(), cuenta.getNumeroCuenta(), registroPago.getMontoPago(), nuevoSaldo);
+    }
+
+    @Transactional(readOnly = true)
+    public boolean enviarTicketPorCorreo(String upc, String correoDestinoOpcional) {
+        if (upc == null || upc.isBlank() || ticketEmailService == null) {
+            return false;
+        }
+        PagoServicio pago = pagoServicioRepository.findByUpc(upc.trim())
+                .orElseThrow(() -> new ValidacionNegocioException("No se encontró el comprobante con UPC: " + upc));
+
+        String correo = (correoDestinoOpcional != null && !correoDestinoOpcional.isBlank())
+                ? correoDestinoOpcional.trim()
+                : Optional.ofNullable(pago.getCliente())
+                        .map(Cliente::getUsuario)
+                        .map(Usuario::getCorreo)
+                        .orElse(null);
+        return ticketEmailService.enviarTicket(pago, correo);
+    }
+
+    private void enviarTicketAsync(PagoServicio registroPago) {
+        if (ticketEmailService == null || !ticketEmailService.isConfigured()) {
+            return;
+        }
+        String correo = Optional.ofNullable(registroPago.getCliente())
+                .map(Cliente::getUsuario)
+                .map(Usuario::getCorreo)
+                .orElse(null);
+        if (correo == null || correo.isBlank()) {
+            return;
+        }
+        java.util.concurrent.CompletableFuture.runAsync(() -> ticketEmailService.enviarTicket(registroPago, correo));
     }
 
     private String truncar(String val, int maxLen) {

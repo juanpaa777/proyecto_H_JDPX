@@ -50,9 +50,15 @@ public class PagoServicioRequest {
     @Schema(description = "Indicador de modalidad de pago: CON_REFERENCIA o SIN_REFERENCIA", example = "CON_REFERENCIA")
     private String bandera;
 
-    @NotBlank(message = "El PIN o contraseña de autorización del cliente es obligatorio")
-    @Schema(description = "Contraseña o PIN seguro del usuario titular de la cuenta para autorizar el cargo", example = "Password123!")
+    @Schema(description = "PIN o contraseña (solo compatibilidad heredada)", example = "123456")
     private String pin;
+
+    @Pattern(regexp = "^[0-9]{6}$", message = "El código 2FA de Google Authenticator debe tener exactamente 6 dígitos")
+    @Schema(description = "Código dinámico de 6 dígitos de Google Authenticator para autorizar el pago", example = "123456")
+    private String codigo2fa;
+
+    @Schema(description = "Indica si el dispositivo móvil validó biometría (huella/rostro) antes del pago", example = "true")
+    private Boolean biometriaVerificada;
 
     @Size(min = 3, max = 15, message = "El código UPC debe tener entre 3 y 15 caracteres")
     @Pattern(regexp = "^[A-Za-z0-9_\\-]{3,15}$", message = "El código UPC solo puede contener caracteres alfanuméricos, guiones y guion bajo")

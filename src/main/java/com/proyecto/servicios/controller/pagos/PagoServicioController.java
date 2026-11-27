@@ -60,5 +60,28 @@ public class PagoServicioController {
         Page<PagoServicioResponse> pagina = pagoServicioService.consultarPagosPaginados(request);
         return ResponseEntity.ok(PaginaResponse.from(pagina));
     }
+
+    @PostMapping("/enviar-ticket")
+    @Operation(
+            summary = "Enviar comprobante de pago (ticket HTML) al correo mediante Google Apps Script",
+            description = "Envía el ticket formateado de una operación (exitosa o fallida) al correo del cliente titular o al correo indicado."
+    )
+    public ResponseEntity<com.proyecto.servicios.model.GenericResponse> enviarTicketCorreo(
+            @RequestBody java.util.Map<String, String> body
+    ) {
+        String upc = body != null ? body.get("upc") : null;
+        String correoDestino = body != null ? body.get("correoDestino") : null;
+        boolean enviado = pagoServicioService.enviarTicketPorCorreo(upc, correoDestino);
+        if (!enviado) {
+            return ResponseEntity.badRequest().body(new com.proyecto.servicios.model.GenericResponse(
+                    400,
+                    "No se pudo enviar el ticket. Verifica que GOOGLE_SCRIPT_TICKET_URL esté configurado en el servidor."
+            ));
+        }
+        return ResponseEntity.ok(new com.proyecto.servicios.model.GenericResponse(
+                200,
+                "Ticket enviado correctamente al correo."
+        ));
+    }
 }
 
