@@ -134,7 +134,9 @@ public class PagoServicioService {
                 .orElseThrow(() -> new UsuarioInactivoException("El usuario asociado a la cuenta se encuentra inactivo"));
 
         String codigo2fa = request.getCodigo2fa() != null ? request.getCodigo2fa().trim() : "";
-        if (!codigo2fa.isEmpty()) {
+        if (Boolean.TRUE.equals(request.getBiometriaVerificada())) {
+            log.info("Pago autorizado mediante biometría verificada en dispositivo para cuenta {}", cuenta.getNumeroCuenta());
+        } else if (!codigo2fa.isEmpty()) {
             TotpService verifier = totpService != null ? totpService : new TotpService();
             Optional<Long> pasoValido = verifier.verificarCodigo(
                     usuario.getTotpSecret(),
@@ -155,7 +157,7 @@ public class PagoServicioService {
                 throw new CredencialesInvalidasException("Credenciales de autorización inválidas.");
             }
         } else {
-            throw new CredencialesInvalidasException("Se requiere el código de 6 dígitos de Google Authenticator (2FA) para autorizar el pago.");
+            throw new CredencialesInvalidasException("Se requiere verificar tu huella o ingresar el código 2FA para autorizar el pago.");
         }
 
         // 3. Validar Producto, Servicio y Monto contra el catálogo de MongoDB

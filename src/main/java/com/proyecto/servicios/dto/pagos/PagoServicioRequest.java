@@ -30,7 +30,7 @@ public class PagoServicioRequest {
 
     @NotNull(message = "El precio o monto del pago es obligatorio")
     @DecimalMin(value = "0.01", message = "El monto del pago debe ser mayor a cero")
-    @DecimalMax(value = "10000.00", message = "El monto del pago no puede exceder $10,000.00")
+    @DecimalMax(value = "50000.00", message = "El monto del pago no puede exceder $50,000.00")
     @Schema(description = "Precio o monto a pagar del servicio", example = "366.99")
     private BigDecimal precio;
 
@@ -53,15 +53,15 @@ public class PagoServicioRequest {
     @Schema(description = "PIN o contraseña (solo compatibilidad heredada)", example = "123456")
     private String pin;
 
-    @Pattern(regexp = "^[0-9]{6}$", message = "El código 2FA de Google Authenticator debe tener exactamente 6 dígitos")
+    @Pattern(regexp = "^$|^[0-9]{6}$", message = "El código 2FA de Google Authenticator debe tener exactamente 6 dígitos")
     @Schema(description = "Código dinámico de 6 dígitos de Google Authenticator para autorizar el pago", example = "123456")
     private String codigo2fa;
 
     @Schema(description = "Indica si el dispositivo móvil validó biometría (huella/rostro) antes del pago", example = "true")
     private Boolean biometriaVerificada;
 
-    @Size(min = 3, max = 15, message = "El código UPC debe tener entre 3 y 15 caracteres")
-    @Pattern(regexp = "^[A-Za-z0-9_\\-]{3,15}$", message = "El código UPC solo puede contener caracteres alfanuméricos, guiones y guion bajo")
+    @Size(min = 3, max = 30, message = "El código UPC debe tener entre 3 y 30 caracteres")
+    @Pattern(regexp = "^[A-Za-z0-9_\\-]{3,30}$", message = "El código UPC solo puede contener caracteres alfanuméricos, guiones y guion bajo")
     @Schema(description = "Código único de operación (UPC) opcional para idempotencia; si se omite se genera automáticamente", example = "UPC83_A1B2C3")
     private String upc;
 }
