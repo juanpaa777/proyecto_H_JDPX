@@ -545,26 +545,32 @@ public class PagoServicioService {
 
         // Caso 3: Cualquier código distinto de "01" -> Pago fallido sin descontar saldo, guardado en categoría FALLIDOS con el número exacto de GestoPago (-1 / 0)
         if (!"01".equals(codigo)) {
-            String numAutReal = Optional.ofNullable(parsedResponse.getNumAutorizacion())
-                    .map(String::trim)
-                    .filter(Predicate.not(String::isEmpty))
-                    .orElse("0");
-            String idTxReal = Optional.ofNullable(parsedResponse.getIdTx())
-                    .filter(Predicate.not(String::isBlank))
-                    .orElseGet(() -> Optional.ofNullable(msg.getIdTx()).orElse(null));
+            String numAutReal = truncar(
+                    Optional.ofNullable(parsedResponse.getNumAutorizacion())
+                            .map(String::trim)
+                            .filter(Predicate.not(String::isEmpty))
+                            .orElse("0"),
+                    60
+            );
+            String idTxReal = truncar(
+                    Optional.ofNullable(parsedResponse.getIdTx())
+                            .filter(Predicate.not(String::isBlank))
+                            .orElseGet(() -> Optional.ofNullable(msg.getIdTx()).orElse(null)),
+                    50
+            );
 
             BigDecimal saldoActual = cuenta.getSaldo();
             registroPago.setSaldoAnterior(saldoActual);
             registroPago.setSaldoPosterior(saldoActual);
             registroPago.setEstatus("FALLIDOS");
-            registroPago.setCodigoRespuesta(codigo);
-            registroPago.setMensajeRespuesta(texto);
+            registroPago.setCodigoRespuesta(truncar(codigo, 10));
+            registroPago.setMensajeRespuesta(truncar(texto, 490));
             registroPago.setIdTxGestopago(idTxReal);
             registroPago.setNumAutorizacion(numAutReal);
             pagoServicioRepository.save(registroPago);
 
             log.warn("Pago FALLIDO en GestoPago [Código {}: {}]. NumAutorizacion: {}, UPC: {}, Saldo intacto: ${}",
-                    codigo, texto, numAutReal, registroPago.getUpc(), saldoActual);
+                    codigo, truncar(texto, 160), numAutReal, registroPago.getUpc(), saldoActual);
             return toResponse(registroPago);
         }
 
@@ -594,13 +600,16 @@ public class PagoServicioService {
         registroPago.setSaldoAnterior(saldoAnterior);
         registroPago.setSaldoPosterior(nuevoSaldo);
         registroPago.setEstatus("EXITOSA");
-        registroPago.setCodigoRespuesta(codigo);
-        registroPago.setMensajeRespuesta(texto);
-        String numAut = Optional.ofNullable(parsedResponse.getNumAutorizacion())
-                .map(String::trim)
-                .filter(Predicate.not(String::isEmpty))
-                .orElse("1");
-        registroPago.setIdTxGestopago(idTx);
+        registroPago.setCodigoRespuesta(truncar(codigo, 10));
+        registroPago.setMensajeRespuesta(truncar(texto, 490));
+        String numAut = truncar(
+                Optional.ofNullable(parsedResponse.getNumAutorizacion())
+                        .map(String::trim)
+                        .filter(Predicate.not(String::isEmpty))
+                        .orElse("1"),
+                60
+        );
+        registroPago.setIdTxGestopago(truncar(idTx, 50));
         registroPago.setNumAutorizacion(numAut);
         registroPago.setComision(parseBigDecimalSeguro(parsedResponse.getComision()));
         registroPago.setPin(Optional.ofNullable(msg.getPin()).map(String::trim).filter(Predicate.not(String::isEmpty)).orElse(null));
@@ -609,6 +618,11 @@ public class PagoServicioService {
         pagoServicioRepository.save(registroPago);
         log.info("Pago de servicio EXITOSO [Código 01]. UPC: {}, Cuenta: {}, Monto descontado: ${}, Nuevo saldo: ${}",
                 registroPago.getUpc(), cuenta.getNumeroCuenta(), registroPago.getMontoPago(), nuevoSaldo);
+    }
+
+    private String truncar(String val, int maxLen) {
+        if (val == null) return null;
+        return val.length() <= maxLen ? val : val.substring(0, maxLen);
     }
 
     private BigDecimal parseBigDecimalSeguro(String valor) {
