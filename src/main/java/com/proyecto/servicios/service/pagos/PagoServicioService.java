@@ -229,6 +229,7 @@ public class PagoServicioService {
                 .unidad(unidad)
                 .randomParam(randomParam)
                 .payloadSigned(payloadSigned)
+                .leyenda(producto.getLegend())
                 .estatus("PROCESANDO")
                 .build();
 
@@ -599,6 +600,10 @@ public class PagoServicioService {
             registroPago.setMensajeRespuesta(truncar(texto, 490));
             registroPago.setIdTxGestopago(idTxReal);
             registroPago.setNumAutorizacion(numAutReal);
+            Optional.ofNullable(msg.getLegend())
+                    .map(String::trim)
+                    .filter(Predicate.not(String::isEmpty))
+                    .ifPresent(registroPago::setLeyenda);
             pagoServicioRepository.save(registroPago);
 
             log.warn("Pago FALLIDO en GestoPago [Código {}: {}]. NumAutorizacion: {}, UPC: {}, Saldo intacto: ${}",
@@ -647,7 +652,10 @@ public class PagoServicioService {
         registroPago.setNumAutorizacion(numAut);
         registroPago.setComision(parseBigDecimalSeguro(parsedResponse.getComision()));
         registroPago.setPin(Optional.ofNullable(msg.getPin()).map(String::trim).filter(Predicate.not(String::isEmpty)).orElse(null));
-        registroPago.setLeyenda(Optional.ofNullable(msg.getLegend()).map(String::trim).filter(Predicate.not(String::isEmpty)).orElse(null));
+        Optional.ofNullable(msg.getLegend())
+                .map(String::trim)
+                .filter(Predicate.not(String::isEmpty))
+                .ifPresent(registroPago::setLeyenda);
 
         pagoServicioRepository.save(registroPago);
         log.info("Pago de servicio EXITOSO [Código 01]. UPC: {}, Cuenta: {}, Monto descontado: ${}, Nuevo saldo: ${}",

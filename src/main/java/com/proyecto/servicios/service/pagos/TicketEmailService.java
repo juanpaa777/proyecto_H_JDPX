@@ -100,6 +100,11 @@ public class TicketEmailService {
         String upc = escapar(Optional.ofNullable(p.getUpc()).orElse("—"));
         String monto = "$" + Optional.ofNullable(p.getMontoPago()).orElse(BigDecimal.ZERO) + " MXN";
         String saldoPosterior = "$" + Optional.ofNullable(p.getSaldoPosterior()).orElse(BigDecimal.ZERO) + " MXN";
+        String leyendaRow = (p.getLeyenda() != null && !p.getLeyenda().isBlank())
+                ? "<tr><td style=\"padding:8px 0;color:#64748B;\">Leyenda del Servicio</td><td style=\"padding:8px 0;text-align:right;color:#334155;font-size:12px;\">"
+                + escapar(p.getLeyenda().trim())
+                + "</td></tr>"
+                : "";
         String mensajeProv = esFallido && p.getMensajeRespuesta() != null
                 ? "<tr><td style=\"padding:8px 0;color:#64748B;\">Respuesta GestoPago</td><td style=\"padding:8px 0;text-align:right;color:#DC2626;font-weight:600;\">"
                 + escapar(p.getCodigoRespuesta() != null ? "[" + p.getCodigoRespuesta() + "] " : "")
@@ -129,6 +134,7 @@ public class TicketEmailService {
                         <tr><td style="padding:8px 0;color:#64748B;">Referencia / Teléfono</td><td style="padding:8px 0;text-align:right;font-family:monospace;">%s</td></tr>
                         <tr><td style="padding:8px 0;color:#64748B;">Folio UPC</td><td style="padding:8px 0;text-align:right;font-family:monospace;font-size:12px;">%s</td></tr>
                         %s
+                        %s
                         <tr style="border-top:1px dashed #CBD5E1;"><td style="padding:12px 0 6px;color:#64748B;font-weight:700;">Importe</td><td style="padding:12px 0 6px;text-align:right;font-weight:900;font-size:15px;">%s</td></tr>
                         <tr><td style="padding:6px 0;color:#64748B;">%s</td><td style="padding:6px 0;text-align:right;font-weight:700;color:%s;">%s</td></tr>
                       </table>
@@ -143,7 +149,7 @@ public class TicketEmailService {
                 bgEstado, colorEstado, tituloEstado,
                 fecha, servicio, producto,
                 colorEstado, escapar(estatus),
-                auth, referencia, upc, mensajeProv,
+                auth, referencia, upc, leyendaRow, mensajeProv,
                 monto,
                 esFallido ? "Saldo Actual (Sin cambios)" : "Nuevo Saldo Disponible",
                 esFallido ? "#334155" : "#059669",
